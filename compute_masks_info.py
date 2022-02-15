@@ -6,22 +6,30 @@ import sklearn.decomposition
 
 from visualization import matrices_to_video
 from visualization.plotting import plot_movements, plot_speeds
-from masks_manipulation import extract_centers
+from masks_manipulation import extract_centers, extract_extreme_points
 
-folder = '../MiVOS/Device_ON'
+folder = '../MiVOS/Device_OFF'
 with open(os.path.join(folder, "masks.pkl"), "rb") as f:
     masks = pkl.load(f)
 
-centers = extract_centers(masks)
+# plot_movements(centers)
+# plot_speeds(centers)
+extreme_points = extract_extreme_points(masks)
 
-finger_1_centers = centers[0]
-plot_movements(centers)
-plot_speeds(centers)
-'''
+plt.imshow(masks[0])
+plt.show()
 
-for i, frame in enumerate(masks):
-    frame[centers[0,i,0], centers[0,i,1]] = 3
-    frame[centers[1,i,0], centers[1,i,1]] = 4
+for i in range(masks.shape[0]):
+    for finger in extreme_points[:, i, ...]:
+        pt1, pt2, pt3, pt4 = finger.reshape((-1, 2))
+        masks[i, pt1[0], pt1[1]] = i+3
+        masks[i, pt2[0], pt2[1]] = i+3
+        masks[i, pt3[0], pt3[1]] = i+3
+        masks[i, pt4[0], pt4[1]] = i+3
+
+
+plt.imshow(masks[0])
+plt.show()
 
 print("Saving video")
 matrices = matrices_to_video(masks, './trial.mp4')

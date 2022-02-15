@@ -5,25 +5,26 @@ The entry point for the user interface
 It is terribly long... GUI code is hard to write!
 """
 
-import sys
-import os
-from os import path
-import functools
-from argparse import ArgumentParser
-
 import cv2
-from PIL import Image
+import functools
 import numpy as np
+import os
+import pickle as pkl
 import torch
-from collections import deque
+import sys
 
-from PyQt5.QtWidgets import (QWidget, QApplication, QComboBox, 
-    QHBoxLayout, QLabel, QPushButton, QTextEdit, 
-    QPlainTextEdit, QVBoxLayout, QSizePolicy, QButtonGroup, QSlider, 
+from argparse import ArgumentParser
+from collections import deque
+from os import path
+from PIL import Image
+
+from PyQt5.QtWidgets import (QWidget, QApplication, QComboBox,
+    QHBoxLayout, QLabel, QPushButton, QTextEdit,
+    QPlainTextEdit, QVBoxLayout, QSizePolicy, QButtonGroup, QSlider,
     QShortcut, QRadioButton, QProgressBar, QFileDialog)
 
 from PyQt5.QtGui import QPixmap, QKeySequence, QImage, QTextCursor
-from PyQt5.QtCore import Qt, QTimer 
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5 import QtCore
 
 from inference_core import InferenceCore
@@ -45,7 +46,7 @@ torch.set_grad_enabled(False)
 palette = pal_color_map()
 
 class App(QWidget):
-    def __init__(self, prop_net, fuse_net, s2m_ctrl:S2MController, fbrs_ctrl:FBRSController, 
+    def __init__(self, prop_net, fuse_net, s2m_ctrl:S2MController, fbrs_ctrl:FBRSController,
                     images, masks, num_objects, mem_freq, mem_profile):
         super().__init__()
 
@@ -98,12 +99,12 @@ class App(QWidget):
         self.tl_slider.setValue(0)
         self.tl_slider.setTickPosition(QSlider.TicksBelow)
         self.tl_slider.setTickInterval(1)
-        
+
         # brush size slider
         self.brush_label = QLabel()
         self.brush_label.setAlignment(Qt.AlignCenter)
         self.brush_label.setMinimumWidth(100)
-        
+
         self.brush_slider = QSlider(Qt.Horizontal)
         self.brush_slider.valueChanged.connect(self.brush_slide)
         self.brush_slider.setMinimum(1)
@@ -282,7 +283,7 @@ class App(QWidget):
 
         # Zoom parameters
         self.zoom_pixels = 150
-        
+
         # initialize action
         self.interactions = {}
         self.interactions['interact'] = [[] for _ in range(self.num_frames)]
@@ -303,7 +304,7 @@ class App(QWidget):
         # <- and -> shortcuts
         QShortcut(QKeySequence(Qt.Key_Left), self).activated.connect(self.on_prev)
         QShortcut(QKeySequence(Qt.Key_Right), self).activated.connect(self.on_next)
-        
+
         # Mask saving
         # QShortcut(QKeySequence('s'), self).activated.connect(self.save)
         # QShortcut(QKeySequence('l'), self).activated.connect(self.debug_pressed)
@@ -318,7 +319,7 @@ class App(QWidget):
         self.algo_timer = Timer()
         self.user_timer = Timer()
         self.console_push_text('Initialized.')
- 
+
     def resizeEvent(self, event):
         self.show_current_frame()
 
@@ -328,6 +329,12 @@ class App(QWidget):
         self.console_push_text('Saving masks and overlays...')
         mask_dir = path.join(folder_path, 'mask')
         overlay_dir = path.join(folder_path, 'overlay')
+
+        with open(path.join(folder_path, "masks.pkl"), "wb") as f:
+            pkl.dump(self.current_mask, f)
+
+        cv2.imwrite(os.path.join(folder_path, "first_frame.png"),
+                    cv2.cvtColor(self.images[0], cv2.COLOR_RGB2BGR))
 
         os.makedirs(mask_dir, exist_ok=True)
         os.makedirs(overlay_dir, exist_ok=True)
@@ -339,7 +346,7 @@ class App(QWidget):
             mask.save(os.path.join(mask_dir, '{:05d}.png'.format(i)))
 
             # Save overlay
-            overlay = overlay_davis(self.images[i], self.current_mask[i]) 
+            overlay = overlay_davis(self.images[i], self.current_mask[i])
             overlay = Image.fromarray(overlay)
             overlay.save(os.path.join(overlay_dir, '{:05d}.png'.format(i)))
         self.console_push_text('Done.')
@@ -375,18 +382,18 @@ class App(QWidget):
     def compose_current_im(self):
         if self.in_local_mode:
             if self.viz_mode == 'fade':
-                self.viz = overlay_davis_fade(self.local_np_im, self.local_np_mask) 
+                self.viz = overlay_davis_fade(self.local_np_im, self.local_np_mask)
             elif self.viz_mode == 'davis':
-                self.viz = overlay_davis(self.local_np_im, self.local_np_mask) 
+                self.viz = overlay_davis(self.local_np_im, self.local_np_mask)
             elif self.viz_mode == 'light':
-                self.viz = overlay_davis(self.local_np_im, self.local_np_mask, 0.9) 
+                self.viz = overlay_davis(self.local_np_im, self.local_np_mask, 0.9)
             else:
                 raise NotImplementedError
         else:
             if self.viz_mode == 'fade':
-                self.viz = overlay_davis_fade(self.images[self.cursur], self.current_mask[self.cursur]) 
+                self.viz = overlay_davis_fade(self.images[self.cursur], self.current_mask[self.cursur])
             elif self.viz_mode == 'davis':
-                self.viz = overlay_davis(self.images[self.cursur], self.current_mask[self.cursur]) 
+                self.viz = overlay_davis(self.images[self.cursur], self.current_mask[self.cursur])
             elif self.viz_mode == 'light':
                 self.viz = overlay_davis(self.images[self.cursur], self.current_mask[self.cursur], 0.9)
             else:
@@ -547,7 +554,7 @@ class App(QWidget):
 
         self.console_push_text('Propagation started.')
         # self.interacted_mask = torch.softmax(self.interacted_mask*1000, dim=0)
-        self.current_mask = self.processor.interact(self.interacted_mask, self.cursur, 
+        self.current_mask = self.processor.interact(self.interacted_mask, self.cursur,
                             self.progress_total_cb, self.progress_step_cb)
         self.interacted_mask = None
         # clear scribble and reset
@@ -673,8 +680,8 @@ class App(QWidget):
         image = self.processor.images[:,self.cursur]
 
         self.interaction = LocalInteraction(
-            image, prev_soft_mask, (self.height, self.width), self.local_bb, 
-            self.local_interactions['interact'][-1].out_prob, 
+            image, prev_soft_mask, (self.height, self.width), self.local_bb,
+            self.local_interactions['interact'][-1].out_prob,
             self.processor.pad, self.local_pad
         )
         self.interaction.storage = self.local_interactions
@@ -711,21 +718,21 @@ class App(QWidget):
             ux = int(round(max(self.local_start[0], ex)))
             ly = int(round(min(self.local_start[1], ey)))
             uy = int(round(max(self.local_start[1], ey)))
-            self.brush_vis_map = cv2.rectangle(self.brush_vis_map, (lx, ly), (ux, uy), 
+            self.brush_vis_map = cv2.rectangle(self.brush_vis_map, (lx, ly), (ux, uy),
                         (128,255,128), thickness=-1)
-            self.brush_vis_alpha = cv2.rectangle(self.brush_vis_alpha, (lx, ly), (ux, uy), 
+            self.brush_vis_alpha = cv2.rectangle(self.brush_vis_alpha, (lx, ly), (ux, uy),
                         0.5, thickness=-1)
         else:
             # Visualize the brush (yeah I know)
             if self.in_local_mode:
-                self.local_brush_vis_map = cv2.circle(self.local_brush_vis_map, 
+                self.local_brush_vis_map = cv2.circle(self.local_brush_vis_map,
                         (int(round(ex)), int(round(ey))), self.brush_size//2+1, color_map[self.current_object], thickness=-1)
-                self.local_brush_vis_alpha = cv2.circle(self.local_brush_vis_alpha, 
+                self.local_brush_vis_alpha = cv2.circle(self.local_brush_vis_alpha,
                         (int(round(ex)), int(round(ey))), self.brush_size//2+1, 0.5, thickness=-1)
             else:
-                self.brush_vis_map = cv2.circle(self.brush_vis_map, 
+                self.brush_vis_map = cv2.circle(self.brush_vis_map,
                         (int(round(ex)), int(round(ey))), self.brush_size//2+1, color_map[self.current_object], thickness=-1)
-                self.brush_vis_alpha = cv2.circle(self.brush_vis_alpha, 
+                self.brush_vis_alpha = cv2.circle(self.brush_vis_alpha,
                         (int(round(ex)), int(round(ey))), self.brush_size//2+1, 0.5, thickness=-1)
 
     def enter_local_control(self):
@@ -748,7 +755,7 @@ class App(QWidget):
             prev_soft_mask = self.this_local_interactions[-1].out_prob
         self.local_interactions['bounding_box'] = self.local_bb
         self.local_interactions['cursur'] = self.cursur
-        init_interaction = CropperInteraction(self.processor.images[:,self.cursur], 
+        init_interaction = CropperInteraction(self.processor.images[:,self.cursur],
                                     prev_soft_mask, self.processor.pad, self.local_bb)
         self.local_interactions['interact'].append(init_interaction)
 
@@ -834,24 +841,24 @@ class App(QWidget):
             if self.curr_interaction == 'Scribble':
                 if last_interaction is None or type(last_interaction) != ScribbleInteraction:
                     self.complete_interaction()
-                    new_interaction = ScribbleInteraction(image, prev_hard_mask, (h, w), 
+                    new_interaction = ScribbleInteraction(image, prev_hard_mask, (h, w),
                                 self.s2m_controller, self.num_objects)
             elif self.curr_interaction == 'Free':
                 if last_interaction is None or type(last_interaction) != FreeInteraction:
                     self.complete_interaction()
                     if self.in_local_mode:
-                        new_interaction = FreeInteraction(image, prev_soft_mask, (h, w), 
+                        new_interaction = FreeInteraction(image, prev_soft_mask, (h, w),
                                 self.num_objects, self.local_pad)
                     else:
-                        new_interaction = FreeInteraction(image, prev_soft_mask, (h, w), 
+                        new_interaction = FreeInteraction(image, prev_soft_mask, (h, w),
                                 self.num_objects, self.processor.pad)
                     new_interaction.set_size(self.brush_size)
             elif self.curr_interaction == 'Click':
-                if (last_interaction is None or type(last_interaction) != ClickInteraction 
+                if (last_interaction is None or type(last_interaction) != ClickInteraction
                         or last_interaction.tar_obj != self.current_object):
                     self.complete_interaction()
                     self.fbrs_controller.unanchor()
-                    new_interaction = ClickInteraction(image, prev_soft_mask, (h, w), 
+                    new_interaction = ClickInteraction(image, prev_soft_mask, (h, w),
                                 self.fbrs_controller, self.current_object, self.processor.pad)
 
             if new_interaction is not None:
@@ -970,7 +977,7 @@ class App(QWidget):
 
 
 if __name__ == '__main__':
-    
+
     # Arguments parsing
     parser = ArgumentParser()
     parser.add_argument('--prop_model', default='saves/stcn.pth')
@@ -1034,7 +1041,6 @@ if __name__ == '__main__':
             fbrs_controller = None
 
         app = QApplication(sys.argv)
-        ex = App(prop_model, fusion_model, s2m_controller, fbrs_controller, 
+        ex = App(prop_model, fusion_model, s2m_controller, fbrs_controller,
                     images, masks, num_objects, args.mem_freq, args.mem_profile)
         sys.exit(app.exec_())
-

@@ -1,0 +1,28 @@
+# TODOS
+
+## Métricas
+
+- Tener en cuenta la normalización respecto del tamaño del dedo cuando hacemos
+  las gráficas de desplazamiento (quizás dividiendo la posición normalizada
+  entre el tamaño que ocupa el dedo en la imagen?)
+- Estudiar cómo podemos extraer la velocidad de movimiento del dedo a partir de
+  la posición del centro del dedo
+- Estudiar si PCA o LinReg nos dan la dirección principal del dedo como una
+  recta para estudiar el movimiento del dedo en distintos puntos (inicio vs
+  punta del dedo)
+- Calcular el coeficiente de amplitud en ventanas de tiempo, para mitigar los
+  casos en los que el dedo se mueve solamente al principio o al final del vídeo
+  (durante la preparación), pero se mantiene quieto en la mayor parte de la
+  grabación
+
+## Modelos de segmentación
+
+- Cambiar ResNet por MobileNet en el modelo de segmentación de máscaras
+  interactivo
+- Estudiar el funcionamiento de STCN para propagación de máscaras
+
+## Videos
+
+- Los vídeos que Paco tiene descargados no coinciden en nomenclatura con los de
+  Laura. Revisar quién tiene los vídeos correctos
+- Unificar la terminología de vídeos (probablemente, Paciente/Visita/Prueba)

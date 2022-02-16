@@ -10,6 +10,8 @@
 - Estudiar si PCA o LinReg nos dan la dirección principal del dedo como una
   recta para estudiar el movimiento del dedo en distintos puntos (inicio vs
   punta del dedo)
+  - Resultado: PCA nos da las direcciones principales del dedo, y nos permite
+    localizar los puntos extremos
 - Calcular el coeficiente de amplitud en ventanas de tiempo, para mitigar los
   casos en los que el dedo se mueve solamente al principio o al final del vídeo
   (durante la preparación), pero se mantiene quieto en la mayor parte de la
@@ -17,8 +19,6 @@
 
 ## Modelos de segmentación
 
-- Cambiar ResNet por MobileNet en el modelo de segmentación de máscaras
-  interactivo
 - Estudiar el funcionamiento de STCN para propagación de máscaras
 
 ## Videos

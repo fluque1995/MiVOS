@@ -231,7 +231,7 @@ class App(QWidget):
         minimap_area.addWidget(QLabel('Overall procedure: '))
         minimap_area.addWidget(QLabel('1. Label a frame (all objects) with whatever means'))
         minimap_area.addWidget(QLabel('2. Propagate'))
-        minimap_area.addWidget(QLabel('3. Find a frame with error, correct it and proagatte again'))
+        minimap_area.addWidget(QLabel('3. Find a frame with error, correct it and propagate again'))
         minimap_area.addWidget(QLabel('4. Repeat'))
         minimap_area.addWidget(QLabel('Tips: '))
         minimap_area.addWidget(QLabel('1: Use Ctrl+Left-click to drag-select a local control region.'))

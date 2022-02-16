@@ -24,5 +24,21 @@
 ## Videos
 
 - Los vídeos que Paco tiene descargados no coinciden en nomenclatura con los de
-  Laura. Revisar quién tiene los vídeos correctos
-- Unificar la terminología de vídeos (probablemente, Paciente/Visita/Prueba)
+  Laura. Revisar quién tiene los vídeos correctos. Unificar la terminología de
+  vídeos (probablemente, Paciente/Visita/Prueba)
+  - Los vídeos se han cotejado, encontrando que el paciente P2 tiene vídeos mal
+    etiquetados. Se ha creado una nueva carpeta, Videos_filtrados, en la que
+    está la información organizada.
+  - El sistema de nomenclatura que se ha utilizado para marcar a los pacientes
+	es PX/Visita_N/prueba, donde la prueba puede ser:
+	- Dedos_enfrentados
+	- D-N_der,
+	- D-N_izq
+	- Extension
+	- Reposo
+	- Suero_der
+	- Suero_izq
+	- Perfil_der
+	- Perfil_izq
+
+	Los perfiles no están disponibles para todos los pacientes

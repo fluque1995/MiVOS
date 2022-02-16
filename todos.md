@@ -42,3 +42,16 @@
 	- Perfil_izq
 
 	Los perfiles no están disponibles para todos los pacientes
+- Comprobar la mejor resolución a la que pueden segmentarse los vídeos
+  - Actualmente, la mejor resolución que somos capaces de utilizar en nuestros
+    ordenadores es de 400px. El resultado con esta resolución es razonablemente
+    bueno. El principal problema que tiene la interfaz gráfica es que carga
+    el vídeo completo desde el principio, por lo que si los requerimientos de
+    memoria del mismo son grandes (e.g. el vídeo es muy largo o la resolución
+    muy alta), el programa revienta por falta de memoria. Se debería estudiar
+    si puede optimizarse la interfaz para no cargar el vídeo completo en memoria
+    todo el tiempo de ejecución, si no que se fuera cargando a medida que los
+    fotogramas van siendo necesarios.
+    - Primera idea: Si no necesitamos propagar la máscara hacia atrás, y nos
+      quedamos con la segmentación inicial, podemos cargar un fotograma en cada
+      vuelta del algoritmo de segmentación.

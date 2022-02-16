@@ -982,7 +982,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--prop_model', default='saves/stcn.pth')
     parser.add_argument('--fusion_model', default='saves/fusion_stcn.pth')
-    parser.add_argument('--s2m_model', default='saves/s2m.pth')
+    parser.add_argument('--s2m_model', default='saves/s2m_mobilenet.pth')
     parser.add_argument('--fbrs_model', default='saves/fbrs.pth')
     parser.add_argument('--images', help='Folders containing input images. Either this or --video need to be specified.')
     parser.add_argument('--video', help='Video file readable by OpenCV. Either this or --images need to be specified.', default='example/example.mp4')

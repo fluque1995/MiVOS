@@ -17,9 +17,10 @@
   (durante la preparación), pero se mantiene quieto en la mayor parte de la
   grabación
 
-## Modelos de segmentación
+## Modelos de segmentación 
 
 - Estudiar el funcionamiento de STCN para propagación de máscaras
+  - Nos quedamos con S2M basado en MobilenetV2 y STCN para propagación
 
 ## Videos
 

@@ -55,3 +55,7 @@
     - Primera idea: Si no necesitamos propagar la máscara hacia atrás, y nos
       quedamos con la segmentación inicial, podemos cargar un fotograma en cada
       vuelta del algoritmo de segmentación.
+- En el vídeo `P2/Visita_2_ON/Reposo`, el paciente no lleva puestos los dedines,
+  pero la segmentación de las manos es perfecta. Es posible estudiar este
+  problema con guantes completos, o directamente segmentando las manos si los
+  pacientes llevan manga larga?

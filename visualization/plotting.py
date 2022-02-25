@@ -11,17 +11,20 @@ def plot_movements(center_positions):
                         the masks representing the fingers
     """
 
-    fig, axs = plt.subplots(2, 1)
+    fig, axs = plt.subplots(1, 2, gridspec_kw={'width_ratios': [3, 1]})
     mean_positions = center_positions.mean(axis=1)
 
     for i, finger in enumerate(center_positions):
         axs[0].plot(finger[:, 0] - mean_positions[i, 0])
-        axs[1].plot(finger[:, 1] - mean_positions[i, 1])
+        axs[1].plot(finger[:, 1] - mean_positions[i, 1], range(len(finger)))
 
-    for ax in axs:
-        ax.set_ylim([-20, 20])
-        ax.legend([f"Finger {i}" for i in range(len(center_positions))])
+    axs[0].set_ylim([-20, 20])
+    axs[0].legend([f"Finger {i+1}" for i in range(len(center_positions))])
 
+    axs[1].set_xlim([-20, 20])
+    axs[1].set_ylim([0, len(finger)])
+    axs[1].legend([f"Finger {i+1}" for i in range(len(center_positions))])
+    fig.tight_layout()
     fig.show()
 
 

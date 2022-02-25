@@ -8,10 +8,12 @@ from visualization import matrices_to_video
 from visualization.plotting import plot_movements, plot_speeds
 from masks_manipulation import extract_centers, extract_extreme_points
 
-folder = '../MiVOS/Device_OFF'
+folder = 'results/P1/Visita_2_ON/Dedos_enfrentados/'
 with open(os.path.join(folder, "masks.pkl"), "rb") as f:
     masks = pkl.load(f)
 
+centers = extract_centers(masks)
+plot_movements(centers)
 # plot_movements(centers)
 # plot_speeds(centers)
 extreme_points = extract_extreme_points(masks)

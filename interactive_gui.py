@@ -47,10 +47,11 @@ palette = pal_color_map()
 
 class App(QWidget):
     def __init__(self, prop_net, fuse_net, s2m_ctrl:S2MController, fbrs_ctrl:FBRSController,
-                    images, masks, num_objects, mem_freq, mem_profile):
+                    images, masks, num_objects, mem_freq, mem_profile, vid_path):
         super().__init__()
 
         self.images = images
+        self.vid_path = vid_path
         self.masks = masks
         self.num_objects = num_objects
         self.s2m_controller = s2m_ctrl
@@ -324,9 +325,9 @@ class App(QWidget):
         self.show_current_frame()
 
     def save(self):
-        folder_path = str(QFileDialog.getExistingDirectory(self, "Select Save Directory"))
+        folder_path = os.path.join("results", self.vid_path)
 
-        self.console_push_text('Saving masks and overlays...')
+        self.console_push_text(f'Saving masks and overlays in folder {folder_path}...')
         mask_dir = path.join(folder_path, 'mask')
         overlay_dir = path.join(folder_path, 'overlay')
 
@@ -991,7 +992,7 @@ if __name__ == '__main__':
     parser.add_argument('--mem_profile', default=2, type=int, help='0 - Faster and more memory intensive; 2 - Slower and less memory intensive. Default: 0.')
     parser.add_argument('--masks', help='Optional, Ground truth masks', default=None)
     parser.add_argument('--no_amp', help='Turn off AMP', action='store_true')
-    parser.add_argument('--resolution', help='Pass -1 to use original size', default=480, type=int)
+    parser.add_argument('--resolution', help='Pass -1 to use original size', default=400, type=int)
     args = parser.parse_args()
 
     with torch.cuda.amp.autocast(enabled=not args.no_amp):
@@ -1018,6 +1019,7 @@ if __name__ == '__main__':
             images = load_images(args.images, args.resolution if args.resolution > 0 else None)
         elif args.video is not None:
             images = load_video(args.video, args.resolution if args.resolution > 0 else None)
+            vid_path = "/".join(args.video.split("/")[2:]).split(".")[0]
         else:
             raise NotImplementedError('You must specify either --images or --video!')
 
@@ -1042,5 +1044,5 @@ if __name__ == '__main__':
 
         app = QApplication(sys.argv)
         ex = App(prop_model, fusion_model, s2m_controller, fbrs_controller,
-                    images, masks, num_objects, args.mem_freq, args.mem_profile)
+                    images, masks, num_objects, args.mem_freq, args.mem_profile, vid_path)
         sys.exit(app.exec_())

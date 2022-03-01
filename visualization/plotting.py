@@ -12,11 +12,10 @@ def plot_movements(center_positions):
     """
 
     fig, axs = plt.subplots(2, 1)
-    mean_positions = center_positions.mean(axis=1)
 
     for i, finger in enumerate(center_positions):
-        axs[0].plot(finger[:, 0] - mean_positions[i, 0])
-        axs[1].plot(finger[:, 1] - mean_positions[i, 1])
+        axs[0].plot(finger[:, 0])
+        axs[1].plot(finger[:, 1])
 
     for ax in axs:
         ax.set_ylim([-20, 20])

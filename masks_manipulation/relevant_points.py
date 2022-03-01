@@ -1,19 +1,54 @@
 import numpy as np
 import sklearn
 
-def extract_centers(matrices):
-    '''Given the sequence of matrices where masks for fingers are extracted, compute
-    the center of the masks for each different one. The center of the mask is a
-    good point to estimate movement of the finger
+from .statistics import fingers_size
+
+
+def extract_centers(masks, normalize=False, move_to_origin=False):
+    '''Given the sequence of matrices where masks for fingers are extracted,
+    compute the center of the masks for each different one.
+
+    Given the sequence of matrices with the masks for fingers, extract the mean
+    point of each finger in each frame. The center of the mask is a good point
+    to estimate movement of the finger. In order to make those positions
+    comparable, it is possible to normalize the center position by the mean size
+    of the finger in the video. Also, it is possible to move the center
+    coordinates using the equilibrium position of the point in the whole video
+
+    Keyword arguments:
+    masks          -- Matrices with the computed masks
+    normalize      -- Choose wether to normalize using mean size of the
+                      finger (default False)
+    move_to_origin -- Choose wether to move the positions of the fingers to
+                          the origin of coordinates (default False)
     '''
 
-    n_masks = matrices.max().astype(int)
-    centers = np.zeros((n_masks, matrices.shape[0], 2)).astype(int)
+    n_masks = masks.max().astype(int)
+    centers = np.zeros((n_masks, masks.shape[0], 2))
     for value in range(1, n_masks+1):
-        blob_coords = np.argwhere(matrices == value)
-        for n_frame in range(matrices.shape[0]):
-            centers[value - 1, n_frame] = blob_coords[
-                blob_coords[:, 0] == n_frame, 1:].mean(axis=0)
+        blob_coords = np.argwhere(masks == value)
+        for n_frame in range(masks.shape[0]):
+            curr_blob = blob_coords[
+                blob_coords[:, 0] == n_frame, 1:]
+            if curr_blob.size > 0:
+                centers[value - 1, n_frame] = curr_blob.mean(axis=0)
+            else:
+                centers[value - 1, n_frame] = np.nan
+
+    finger_means = np.nanmean(centers, axis=1)
+    for i, finger in enumerate(finger_means):
+        centers[i, :, 0] = np.nan_to_num(centers[i, :, 0], nan=finger[0])
+        centers[i, :, 1] = np.nan_to_num(centers[i, :, 1], nan=finger[1])
+
+
+    if normalize:
+        finger_sizes = np.sqrt(fingers_size(masks))
+        for i, finger_size in enumerate(finger_sizes):
+            centers[i] /= finger_size/10
+
+    if move_to_origin:
+        center_means = centers.mean(axis=1, keepdims=True)
+        centers = centers - center_means
     return centers
 
 

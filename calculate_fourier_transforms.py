@@ -20,7 +20,6 @@ for visit in ['Visita_1_OFF', 'Visita_2_ON', 'Visita_3_ON']:
 
     curr_centers = extract_centers(masks, normalize=True, move_to_origin=True)
     centers.append(curr_centers)
-    results.append(frequency_and_magnitude(curr_centers, fps=30))
+    results.append(frequency_and_magnitude(curr_centers, fps=30, temporal_window=60))
 
-for center in centers:
-    plot_movements(center)
+print(results)

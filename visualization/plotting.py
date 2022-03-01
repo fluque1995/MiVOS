@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import masks_manipulation
 
+
 def plot_movements(center_positions):
     """Plot x-axis and y-axis displacement from mean position for center of the
     fingers

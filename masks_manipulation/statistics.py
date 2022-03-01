@@ -46,31 +46,57 @@ def fingers_size(masks, temporal_window=None):
     return finger_sizes
 
 
-def frequency_and_magnitude(finger_points, fps=30):
+def frequency_and_magnitude(finger_points, fps=30, temporal_window=None):
     """Calculate oscillation frequency and magnitude of finger points using fast
     fourier transform
 
     Keyword arguments:
-    finger_points -- Sequences of relevant points to use for frequency calculation
-    fps           -- Frequency of sampling for data. Default 30, as is the framerate
-                     of our test videos
+    finger_points   -- Sequences of relevant points to use for frequency calculation
+    fps             -- Frequency of sampling for data. Default 30, as is the
+                       framerate of our test videos
+    temporal_window -- Calculate the frequency considering temporal windows of
+                       n frames. If None, calculate the frequency using the whole
+                       video (default None)
     """
     results = {}
     for i, finger in enumerate(finger_points):
         x_points = finger[:, 0]
         y_points = finger[:, 1]
 
-        x_fft = abs(np.fft.fft(x_points))
-        x_freqs = np.fft.fftfreq(len(x_fft))
-        max_id_x = np.argmax(x_fft)
+        if temporal_window is None:
+            x_fft = abs(np.fft.fft(x_points))
+            x_freqs = np.fft.fftfreq(len(x_fft))
+            max_id_x = np.argmax(x_fft)
 
-        y_fft = abs(np.fft.fft(y_points))
-        y_freqs = np.fft.fftfreq(len(y_fft))
-        max_id_y = np.argmax(y_fft)
+            y_fft = abs(np.fft.fft(y_points))
+            y_freqs = np.fft.fftfreq(len(y_fft))
+            max_id_y = np.argmax(y_fft)
 
-        results[i] = {
-            'x_mag': x_fft[max_id_x], 'x_freq': abs(fps*x_freqs[max_id_x]),
-            'y_mag': y_fft[max_id_y], 'y_freq': abs(fps*y_freqs[max_id_y])
-        }
+            results[i] = {
+                'x_mag': x_fft[max_id_x], 'x_freq': abs(fps*x_freqs[max_id_x]),
+                'y_mag': y_fft[max_id_y], 'y_freq': abs(fps*y_freqs[max_id_y])
+            }
+        else:
+            x_mags, x_freqs, y_mags, y_freqs = [], [], [], []
+            for j in range(0, finger.shape[0], temporal_window):
+                curr_x_points = x_points[j:j+temporal_window]
+                curr_y_points = y_points[j:j+temporal_window]
+
+                x_fft = abs(np.fft.fft(curr_x_points))
+                x_freq = np.fft.fftfreq(len(x_fft))
+                max_id_x = np.argmax(x_fft)
+
+                y_fft = abs(np.fft.fft(curr_y_points))
+                y_freq = np.fft.fftfreq(len(y_fft))
+                max_id_y = np.argmax(y_fft)
+
+                x_mags.append(x_fft[max_id_x])
+                x_freqs.append(abs(fps*x_freq[max_id_x]))
+                y_mags.append(y_fft[max_id_y])
+                y_freqs.append(abs(fps*y_freq[max_id_y]))
+            results[i] = {
+                'x_mag': x_mags, 'x_freq': x_freqs,
+                'y_mag': y_mags, 'y_freq': y_freqs
+            }
 
     return results

@@ -83,3 +83,6 @@
   vídeo de reposo se colocan las manos apoyadas sobre las palmas o sobre el
   dorso indistintamente). Creemos que las medidas estadísticas sobre el
   movimiento de los dedos en estas dos posiciones no son comparables.
+- ¿Segmentar ambos dedos en todos los vídeos aunque la prueba en cuestión esté centrada solo en el derecho/izquierdo? Cuando hay dos dedos se toma el derecho como el primero y el izquierdo como el segundo, pero cuando hay solo uno se toma ese como el primero, independientemente de si es derecho o izquierdo. Esto es problemático en la extracción automática de resultados, ya que, en ese caso, se guardan todas las estadísticas como si fueran del primer dedo (derecho).
+- Valores raros del índice de movimiento en los vídeos dedo-nariz y gráficas de movimiento poco informativas (heatmap P1/V2/D-N_izq 10/10).
+- Hay dos funciones plot_movements, una en plotting.py y otra en statistics.py. La que usamos es la de plotting: ¿eliminar la otra?

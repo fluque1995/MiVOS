@@ -18,7 +18,7 @@ def movement_index(masks, temporal_window=None):
     different_values = different_values[different_values != 0]
     results = {}
     for value in different_values:
-        if temporal_window is None:
+        if temporal_window is not None:
             curr_finger_movements = []
             for i in range(0, masks.shape[0], temporal_window):
                 curr_masks = masks[i: i+temporal_window]

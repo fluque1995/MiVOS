@@ -87,3 +87,4 @@
   - Al etiquetar los dos dedos en todos los vídeos, los resultados son consistentes y se pueden estudiar los dedos por separado.
 - Valores raros del índice de movimiento en los vídeos dedo-nariz y gráficas de movimiento poco informativas.
 - Hay dos funciones plot_movements, una en plotting.py y otra en statistics.py. La que usamos es la de plotting: ¿eliminar la otra?
+- En los vídeos de perfil: cuando es perfil derecho, en la tabla aparece -0 en los campos del dedo izquierdo; cuando es perfil izquierdo, en la tabla aparece 0.0 o nan en los campos del dedo derecho. ¿Por qué?

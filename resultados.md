@@ -38,3 +38,12 @@
   cuadrada de este valor (se toma la raíz cuadrada para convertir una magnitud
   espacial en una magnitud lineal), se obtiene un valor de movimiento
   normalizado respecto de la distancia a la cámara.
+- Vídeos dedo-nariz: Utilizando el filtrado de ruido de Savitzky-Golay sobre los
+  centros de las máscaras de los dedos, eliminamos la vibración del dedo del
+  movimiento general del brazo. Después restando las dos señales (la original
+  menos la señal limpia), aislamos el temblor del dedo. Considerando estas
+  diferencias como una distribución de datos, observamos que para los vídeos en
+  los que el temblor está mitigado por estar el electrodo encendido, los valores
+  se concentran en torno al 0. En cambio, cuando el electrodo está apagado, las
+  diferencias son mucho mayores. La desviación típica de estas diferencias nos
+  da una medida de la gravedad del temblor.

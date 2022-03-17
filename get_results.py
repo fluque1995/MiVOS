@@ -8,8 +8,8 @@ import pickle as pkl
 from masks_manipulation import extract_centers, frequency_and_magnitude, movement_index
 from visualization.plotting import plot_movements, plot_finger_heatmaps
 
-masks_dir = './results/'
-output_dir = './metrics_results/'
+masks_dir = '../Resultados_unificados/'
+output_dir = '../Results_unif/'
 
 os.makedirs(output_dir, exist_ok=True)
 
@@ -57,57 +57,51 @@ for patient in os.listdir(masks_dir):
 
                     print('Computing frequency for the whole video...')
                     freq_and_mags = frequency_and_magnitude(curr_centers, fps=30)
-                    f1_x_whole = freq_and_mags[list(freq_and_mags)[0]]['x_freq']
-                    m1_x_whole = freq_and_mags[(list(freq_and_mags)[0])]['x_mag']
-                    f1_y_whole = freq_and_mags[(list(freq_and_mags)[0])]['y_freq']
-                    m1_y_whole = freq_and_mags[(list(freq_and_mags)[0])]['y_mag']
-                    f2_x_whole = '-'
-                    m2_x_whole = '-'
-                    f2_y_whole = '-'
-                    m2_y_whole = '-'
+                    f1 = freq_and_mags[list(freq_and_mags)[0]] if not np.isnan(freq_and_mags[list(freq_and_mags)[0]]['x_mag']) else {}
+                    f2 = freq_and_mags[list(freq_and_mags)[1]] if len(freq_and_mags) > 1 else {}
 
-                    if len(freq_and_mags) > 1:
-                        f2_x_whole = freq_and_mags[(list(freq_and_mags)[1])]['x_freq']
-                        m2_x_whole = freq_and_mags[(list(freq_and_mags)[1])]['x_mag']
-                        f2_y_whole = freq_and_mags[(list(freq_and_mags)[1])]['y_freq']
-                        m2_y_whole = freq_and_mags[(list(freq_and_mags)[1])]['y_mag']
+                    f1_x_whole = f1['x_freq'] if len(f1) > 0 else '-'
+                    m1_x_whole = f1['x_mag'] if len(f1) > 0 else '-'
+                    f1_y_whole = f1['y_freq'] if len(f1) > 0 else '-'
+                    m1_y_whole = f1['y_mag'] if len(f1) > 0 else '-'
+                    f2_x_whole = f2['x_freq'] if len(f2) > 0 else '-'
+                    m2_x_whole = f2['x_mag'] if len(f2) > 0 else '-'
+                    f2_y_whole = f2['y_freq'] if len(f2) > 0 else '-'
+                    m2_y_whole = f2['y_mag'] if len(f2) > 0 else '-'
 
                     print('Computing frequency with temporal_window=30...')
                     freq_and_mags_30 = frequency_and_magnitude(curr_centers, fps=30, temporal_window=30)
-                    f1_x_30 = freq_and_mags_30[list(freq_and_mags_30)[0]]['x_freq']
-                    m1_x_30 = freq_and_mags_30[list(freq_and_mags_30)[0]]['x_mag']
-                    f1_y_30 = freq_and_mags_30[list(freq_and_mags_30)[0]]['y_freq']
-                    m1_y_30 = freq_and_mags_30[list(freq_and_mags_30)[0]]['y_mag']
-                    f2_x_30 = '-'
-                    m2_x_30 = '-'
-                    f2_y_30 = '-'
-                    m2_y_30 = '-'
+                    f1_30 = freq_and_mags_30[list(freq_and_mags_30)[0]] if not np.isnan(freq_and_mags_30[list(freq_and_mags_30)[0]]['x_mag']).all() else {}
+                    f2_30 = freq_and_mags_30[list(freq_and_mags_30)[1]] if len(freq_and_mags_30) > 1 else {}
 
-                    if len(freq_and_mags_30) > 1:
-                        f2_x_30 = freq_and_mags_30[list(freq_and_mags_30)[1]]['x_freq']
-                        m2_x_30 = freq_and_mags_30[list(freq_and_mags_30)[1]]['x_mag']
-                        f2_y_30 = freq_and_mags_30[list(freq_and_mags_30)[1]]['y_freq']
-                        m2_y_30 = freq_and_mags_30[list(freq_and_mags_30)[1]]['y_mag']
+                    f1_x_30 = f1_30['x_freq'] if len(f1_30) > 0 else '-'
+                    m1_x_30 = f1_30['x_mag'] if len(f1_30) > 0 else '-'
+                    f1_y_30 = f1_30['y_freq'] if len(f1_30) > 0 else '-'
+                    m1_y_30 = f1_30['y_mag'] if len(f1_30) > 0 else '-'
+                    f2_x_30 = f2_30['x_freq'] if len(f2_30) > 0 else '-'
+                    m2_x_30 = f2_30['x_mag'] if len(f2_30) > 0 else '-'
+                    f2_y_30 = f2_30['y_freq'] if len(f2_30) > 0 else '-'
+                    m2_y_30 = f2_30['y_mag'] if len(f2_30) > 0 else '-'
 
                     print('Computing frequency with temporal_window=60...')
                     freq_and_mags_60 = frequency_and_magnitude(curr_centers, fps=30, temporal_window=60)
-                    f1_x_60 = freq_and_mags_60[list(freq_and_mags_60)[0]]['x_freq']
-                    m1_x_60 = freq_and_mags_60[list(freq_and_mags_60)[0]]['x_mag']
-                    f1_y_60 = freq_and_mags_60[list(freq_and_mags_60)[0]]['y_freq']
-                    m1_y_60 = freq_and_mags_60[list(freq_and_mags_60)[0]]['y_mag']
-                    f2_x_60 = '-'
-                    m2_x_60 = '-'
-                    f2_y_60 = '-'
-                    m2_y_60 = '-'
+                    f1_60 = freq_and_mags_60[list(freq_and_mags_60)[0]] if not np.isnan(freq_and_mags_60[list(freq_and_mags_60)[0]]['x_mag']).all() else {}
+                    f2_60 = freq_and_mags_60[list(freq_and_mags_60)[1]] if len(freq_and_mags_60) > 1 else {}
 
-                    if len(freq_and_mags_60) > 1:
-                        f2_x_60 = freq_and_mags_60[list(freq_and_mags_60)[1]]['x_freq']
-                        m2_x_60 = freq_and_mags_60[list(freq_and_mags_60)[1]]['x_mag']
-                        f2_y_60 = freq_and_mags_60[list(freq_and_mags_60)[1]]['y_freq']
-                        m2_y_60 = freq_and_mags_60[list(freq_and_mags_60)[1]]['y_mag']
+                    f1_x_60 = f1_60['x_freq'] if len(f1_60) > 0 else '-'
+                    m1_x_60 = f1_60['x_mag'] if len(f1_60) > 0 else '-'
+                    f1_y_60 = f1_60['y_freq'] if len(f1_60) > 0 else '-'
+                    m1_y_60 = f1_60['y_mag'] if len(f1_60) > 0 else '-'
+                    f2_x_60 = f2_60['x_freq'] if len(f2_60) > 0 else '-'
+                    m2_x_60 = f2_60['x_mag'] if len(f2_60) > 0 else '-'
+                    f2_y_60 = f2_60['y_freq'] if len(f2_60) > 0 else '-'
+                    m2_y_60 = f2_60['y_mag'] if len(f2_60) > 0 else '-'
 
                     print('Plotting movements...')
-                    plot_movements(curr_centers, saving_path=os.path.join(output_path, 'movement.png'))
+                    if experiment[0:3] == 'D-N':
+                        plot_movements(curr_centers, y_limit=30, x_limit=100, saving_path=os.path.join(output_path, 'movement.png'))
+                    else:
+                        plot_movements(curr_centers, saving_path=os.path.join(output_path, 'movement.png'))
 
                     print('Computing movement index for the whole video...')
                     mov_indices = movement_index(masks)

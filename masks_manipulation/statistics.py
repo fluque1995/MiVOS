@@ -1,20 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-
-def plot_movements(center_positions):
-    fig, axs = plt.subplots(2, 1)
-    mean_positions = center_positions.mean(axis=(1))
-    for ax in axs:
-        ax.set_ylim([-20, 20])
-    print(mean_positions)
-    for i, finger in enumerate(center_positions):
-        axs[0].plot(finger[:, 0] - mean_positions[i, 0])
-        axs[1].plot(finger[:, 1] - mean_positions[i, 1])
-
-    fig.show()
-
-
 def fingers_size(masks, temporal_window=None):
     """Calculate the size of each finger in the video from the masks
     Keyword Arguments:
@@ -94,6 +80,7 @@ def frequency_and_magnitude(finger_points, fps=30, temporal_window=None):
                 x_freqs.append(abs(fps*x_freq[max_id_x]))
                 y_mags.append(y_fft[max_id_y])
                 y_freqs.append(abs(fps*y_freq[max_id_y]))
+
             results[i] = {
                 'x_mag': x_mags, 'x_freq': x_freqs,
                 'y_mag': y_mags, 'y_freq': y_freqs

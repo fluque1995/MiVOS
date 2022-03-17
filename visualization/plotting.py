@@ -3,36 +3,76 @@ import numpy as np
 import masks_manipulation
 
 
-def plot_movements(center_positions, show_figures=False, saving_path=None):
+def plot_movements(center_positions, y_limit=20, x_limit=20, show_figures=False, saving_path=None):
     """Plot x-axis and y-axis displacement from mean position for center of the
     fingers
 
     Keyword arguments:
     center_positions -- x-y tuples of positions corresponding to the center of
                         the masks representing the fingers
+    y_limit          -- Min/max value for the vertical movement plot
+    x_limit          -- Min/max value for the horizontal movement plot
+    show_figures     -- Whether to display the graphs in a window or not
     saving_path      -- Path where we want to save the plot. If None, the image
                         is not saved (default None)
     """
 
-    fig, axs = plt.subplots(1, 2, gridspec_kw={'width_ratios': [3, 1]})
+    with plt.style.context(('ggplot')):
+        fig, axs = plt.subplots(1, 2, gridspec_kw={'width_ratios': [3, 1]})
 
-    for i, finger in enumerate(center_positions):
-        axs[0].plot(finger[:, 0])
-        axs[1].plot(finger[:, 1], range(len(finger)))
+        for i, finger in enumerate(center_positions):
+            axs[0].plot(finger[:, 0])
+            axs[1].plot(finger[:, 1], range(len(finger)))
 
-    #axs[0].set_ylim([-20, 20])
-    axs[0].legend([f"Finger {i+1}" for i in range(len(center_positions))])
+        axs[0].set_ylim([-y_limit, y_limit])
+        axs[0].legend([f"Finger {i+1}" for i in range(len(center_positions))])
 
-    #axs[1].set_xlim([-20, 20])
-    axs[1].set_ylim([0, len(finger)])
-    axs[1].legend([f"Finger {i+1}" for i in range(len(center_positions))])
+        axs[1].set_xlim([-x_limit, x_limit])
+        axs[1].set_ylim([0, len(finger)])
+        axs[1].legend([f"Finger {i+1}" for i in range(len(center_positions))])
+        fig.tight_layout()
+        if show_figures:
+            fig.show()
+        if saving_path is not None:
+            fig.savefig(saving_path)
+
+def plot_overlapped_movements(centers, y_limit=20, x_limit=20, saving_path=None):
+    """Plot x-axis and y-axis displacement from mean position for center of the
+    fingers. Centers is a list, so the centers are plotted overlapped
+
+    Keyword arguments:
+    centers     -- List of x-y tuples of positions corresponding to the center of
+                        the masks representing the fingers
+    saving_path -- Path where we want to save the plot. If None, the image
+                        is not saved (default None)
+    y_limit     -- Min/max value for the vertical movement plot
+    x_limit     -- Min/max value for the horizontal movement plot
+    """
+
+    overlapping = 0.5
+
+    with plt.style.context(('ggplot')):
+        fig, axs = plt.subplots(1, 2, gridspec_kw={'width_ratios': [3, 1]})
+
+        for center_positions in centers:
+            for i, finger in enumerate(center_positions):
+                axs[0].plot(finger[:, 0], alpha=overlapping)
+                axs[1].plot(finger[:, 1], range(len(finger)), alpha=overlapping)
+
+            axs[0].set_ylim([-y_limit, y_limit])
+            axs[0].legend([f"Finger {i+1}" for i in range(len(center_positions))])
+
+            axs[1].set_xlim([-x_limit, x_limit])
+            axs[1].set_ylim([0, len(finger)])
+            axs[1].legend([f"Finger {i+1}" for i in range(len(center_positions))])
+
+>>>>>>> eb39adc88ee0a225c1d137d78343b80ded37af92
     fig.tight_layout()
     if show_figures:
         fig.show()
 
     if saving_path is not None:
         fig.savefig(saving_path)
-
 
 def plot_speeds(center_positions):
     """Plot x-axis and y-axis speed in movement

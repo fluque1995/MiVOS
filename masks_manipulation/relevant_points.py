@@ -108,7 +108,7 @@ def extract_extreme_points(matrices):
     return extreme_points.astype(int)
 
 
-def denoise_centers(finger_centers, window_length=5, polyorder=2):
+def denoise_centers(finger_centers, window_length=9, polyorder=2):
     """Denoise the signal of finger movements using a Savitzky-Golay filter.
     This filter fits a polynomial in each step of order passed as argument,
     using the number of points specified as window_size for interpolation.

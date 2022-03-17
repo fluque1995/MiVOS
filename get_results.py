@@ -8,8 +8,8 @@ import pickle as pkl
 from masks_manipulation import extract_centers, frequency_and_magnitude, movement_index
 from visualization.plotting import plot_movements, plot_finger_heatmaps
 
-masks_dir = '../Resultados/'
-output_dir = '../Results/'
+masks_dir = './results/'
+output_dir = './metrics_results/'
 
 os.makedirs(output_dir, exist_ok=True)
 

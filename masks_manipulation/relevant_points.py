@@ -1,5 +1,6 @@
 import numpy as np
 import sklearn
+import scipy.signal
 
 from .statistics import fingers_size
 
@@ -105,3 +106,24 @@ def extract_extreme_points(matrices):
             ]
 
     return extreme_points.astype(int)
+
+
+def denoise_centers(finger_centers, window_length=5, polyorder=2):
+    """Denoise the signal of finger movements using a Savitzky-Golay filter.
+    This filter fits a polynomial in each step of order passed as argument,
+    using the number of points specified as window_size for interpolation.
+
+    Keyword Arguments:
+    finger_centers -- Numpy array representing the center of the fingers.
+                      Expected size: (2, n_frames, 2), corresponding to 2
+                      fingers, number of frames in video, and (x,y) coords
+    window_length  -- Number of points to consider in each step for windows
+                      denoising
+    polyorder      -- Order of the polynomial to be fit in each iteration
+    """
+    smoothed_centers = np.zeros_like(finger_centers)
+    for i, finger in enumerate(finger_centers):
+        smoothed_centers[i] = scipy.signal.savgol_filter(
+            finger, window_length, polyorder, axis=0)
+
+    return smoothed_centers

@@ -36,11 +36,14 @@ def extract_centers(masks, normalize=False, move_to_origin=False):
             else:
                 centers[value - 1, n_frame] = np.nan
 
-    finger_means = np.nanmean(centers, axis=1)
-    for i, finger in enumerate(finger_means):
-        centers[i, :, 0] = np.nan_to_num(centers[i, :, 0], nan=finger[0])
-        centers[i, :, 1] = np.nan_to_num(centers[i, :, 1], nan=finger[1])
+    def nan_helper(y):
+        return np.isnan(y), lambda z: z.nonzero()[0]
 
+    for i in range(len(centers)):
+        nans, x = nan_helper(centers[i, :, 0])
+        centers[i, nans, 0] = np.interp(x(nans), x(~nans), centers[i, ~nans, 0])
+        nans, x = nan_helper(centers[i, :, 1])
+        centers[i, nans, 1] = np.interp(x(nans), x(~nans), centers[i, ~nans, 1])
 
     if normalize:
         finger_sizes = np.sqrt(fingers_size(masks))
@@ -108,7 +111,7 @@ def extract_extreme_points(matrices):
     return extreme_points.astype(int)
 
 
-def denoise_centers(finger_centers, window_length=9, polyorder=2):
+def savgol_smoothing(finger_centers, window_length=9, polyorder=2):
     """Denoise the signal of finger movements using a Savitzky-Golay filter.
     This filter fits a polynomial in each step of order passed as argument,
     using the number of points specified as window_size for interpolation.

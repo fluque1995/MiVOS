@@ -25,10 +25,13 @@ def plot_movements(center_positions, y_limit=20, x_limit=20,
             axs[0].plot(finger[:, 0])
             axs[1].plot(finger[:, 1], range(len(finger)))
 
-        axs[0].set_ylim([-y_limit, y_limit])
+        if y_limit is not None:
+            axs[0].set_ylim([-y_limit, y_limit])
         axs[0].legend([f"Finger {i+1}" for i in range(len(center_positions))])
 
-        axs[1].set_xlim([-x_limit, x_limit])
+        if x_limit is not None:
+            axs[1].set_xlim([-x_limit, x_limit])
+
         axs[1].set_ylim([0, len(finger)])
         axs[1].legend([f"Finger {i+1}" for i in range(len(center_positions))])
         fig.tight_layout()

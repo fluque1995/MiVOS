@@ -32,9 +32,11 @@ def fingers_size(masks, temporal_window=None):
     return finger_sizes
 
 
-def frequency_and_magnitude(finger_points, fps=30, temporal_window=None):
+def frequency_and_magnitude(finger_points, fps=30,
+                            temporal_window=None, magnitude_thr=50):
     """Calculate oscillation frequency and magnitude of finger points using fast
-    fourier transform
+    fourier transform. The oscillation frequency is calculated as the biggest
+    frequency whose magnitude is greater than a certain threshold
 
     Keyword arguments:
     finger_points   -- Sequences of relevant points to use for frequency calculation
@@ -43,6 +45,8 @@ def frequency_and_magnitude(finger_points, fps=30, temporal_window=None):
     temporal_window -- Calculate the frequency considering temporal windows of
                        n frames. If None, calculate the frequency using the whole
                        video (default None)
+    magnitude_thr   -- Threshold for magnitude to consider the frequency
+                       oscillation as significative
     """
     results = {}
     for i, finger in enumerate(finger_points):
@@ -52,16 +56,34 @@ def frequency_and_magnitude(finger_points, fps=30, temporal_window=None):
         if temporal_window is None:
             x_fft = abs(np.fft.fft(x_points))
             x_freqs = np.fft.fftfreq(len(x_fft))
-            max_id_x = np.argmax(x_fft)
+            significative_x_fft = (x_fft > magnitude_thr)
+            signif_indices = np.argwhere(significative_x_fft == True)
+            # The biggest frequency with positive value in the frequencies array
+            # is placed in the middle of the vector. If no magnitude value is
+            # over the threshold, we just return the biggest one
+            if len(signif_indices) > 0:
+                max_id_x = signif_indices[len(signif_indices)//2 - 1]
+            else:
+                max_id_x = np.argmax(x_fft)
 
             y_fft = abs(np.fft.fft(y_points))
             y_freqs = np.fft.fftfreq(len(y_fft))
-            max_id_y = np.argmax(y_fft)
+            significative_y_fft = (y_fft > magnitude_thr)
+            signif_indices = np.argwhere(significative_y_fft == True)
+            if len(signif_indices) > 0:
+                max_id_y = signif_indices[len(signif_indices)//2 - 1]
+            else:
+                max_id_y = np.argmax(y_fft)
 
             results[i] = {
-                'x_mag': x_fft[max_id_x], 'x_freq': abs(fps*x_freqs[max_id_x]),
-                'y_mag': y_fft[max_id_y], 'y_freq': abs(fps*y_freqs[max_id_y])
+                'x': {'mag': x_fft, 'freq': x_freqs,
+                      'max_mag': x_fft[max_id_x],
+                      'max_freq': abs(fps*x_freqs[max_id_x])},
+                'y':  {'mag': y_fft, 'freq': y_freqs,
+                       'max_mag': y_fft[max_id_y],
+                       'max_freq': abs(fps*y_freqs[max_id_y])}
             }
+
         else:
             x_mags, x_freqs, y_mags, y_freqs = [], [], [], []
             for j in range(0, finger.shape[0], temporal_window):

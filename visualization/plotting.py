@@ -3,7 +3,8 @@ import numpy as np
 import masks_manipulation
 
 
-def plot_movements(center_positions, y_limit=20, x_limit=20, show_figures=False, saving_path=None):
+def plot_movements(center_positions, y_limit=20, x_limit=20,
+                   show_figures=False, saving_path=None):
     """Plot x-axis and y-axis displacement from mean position for center of the
     fingers
 
@@ -36,17 +37,20 @@ def plot_movements(center_positions, y_limit=20, x_limit=20, show_figures=False,
         if saving_path is not None:
             fig.savefig(saving_path)
 
-def plot_overlapped_movements(centers, y_limit=20, x_limit=20, saving_path=None):
+
+def plot_overlapped_movements(centers, y_limit=20, x_limit=20,
+                              show_figures=False, saving_path=None):
     """Plot x-axis and y-axis displacement from mean position for center of the
     fingers. Centers is a list, so the centers are plotted overlapped
 
     Keyword arguments:
-    centers     -- List of x-y tuples of positions corresponding to the center of
-                        the masks representing the fingers
-    saving_path -- Path where we want to save the plot. If None, the image
-                        is not saved (default None)
-    y_limit     -- Min/max value for the vertical movement plot
-    x_limit     -- Min/max value for the horizontal movement plot
+    centers      -- List of x-y tuples of positions corresponding to the center of
+                    the masks representing the fingers
+    y_limit      -- Min/max value for the vertical movement plot
+    x_limit      -- Min/max value for the horizontal movement plot
+    show_figures -- Whether to display the graphs in a window or not
+    saving_path  -- Path where we want to save the plot. If None, the image
+                    is not saved (default None)
     """
 
     overlapping = 0.5
@@ -66,13 +70,13 @@ def plot_overlapped_movements(centers, y_limit=20, x_limit=20, saving_path=None)
             axs[1].set_ylim([0, len(finger)])
             axs[1].legend([f"Finger {i+1}" for i in range(len(center_positions))])
 
->>>>>>> eb39adc88ee0a225c1d137d78343b80ded37af92
     fig.tight_layout()
     if show_figures:
         fig.show()
 
     if saving_path is not None:
         fig.savefig(saving_path)
+
 
 def plot_speeds(center_positions):
     """Plot x-axis and y-axis speed in movement

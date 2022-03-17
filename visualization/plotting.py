@@ -3,7 +3,7 @@ import numpy as np
 import masks_manipulation
 
 
-def plot_movements(center_positions, saving_path=None):
+def plot_movements(center_positions, show_figures=False, saving_path=None):
     """Plot x-axis and y-axis displacement from mean position for center of the
     fingers
 
@@ -20,14 +20,16 @@ def plot_movements(center_positions, saving_path=None):
         axs[0].plot(finger[:, 0])
         axs[1].plot(finger[:, 1], range(len(finger)))
 
-    axs[0].set_ylim([-20, 20])
+    #axs[0].set_ylim([-20, 20])
     axs[0].legend([f"Finger {i+1}" for i in range(len(center_positions))])
 
-    axs[1].set_xlim([-20, 20])
+    #axs[1].set_xlim([-20, 20])
     axs[1].set_ylim([0, len(finger)])
     axs[1].legend([f"Finger {i+1}" for i in range(len(center_positions))])
     fig.tight_layout()
-    #fig.show()
+    if show_figures:
+        fig.show()
+
     if saving_path is not None:
         fig.savefig(saving_path)
 

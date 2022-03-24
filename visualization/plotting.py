@@ -38,8 +38,8 @@ def plot_movements(center_positions, y_limit=20, x_limit=20,
         axs[1].set_title(f"Fingers' horizontal movement", fontsize=10, loc="center")
         fig.tight_layout()
 
-        labels = [f"Finger {i+1}" for i in range(len(center_positions))]
-        fig.legend([vm, hm], labels = labels, bbox_to_anchor = (1.2, 0.6))
+        labels = ["Right finger", "Left finger"]
+        fig.legend(labels=labels, bbox_to_anchor=(1.2, 0.6))
         if show_figures:
             fig.show()
         if saving_path is not None:
@@ -72,11 +72,11 @@ def plot_overlapped_movements(centers, y_limit=20, x_limit=20,
                 axs[1].plot(finger[:, 1], range(len(finger)), alpha=overlapping)
 
             axs[0].set_ylim([-y_limit, y_limit])
-            axs[0].legend([f"Finger {i+1}" for i in range(len(center_positions))])
+            axs[0].legend(["Right finger", "Left finger"])
 
             axs[1].set_xlim([-x_limit, x_limit])
             axs[1].set_ylim([0, len(finger)])
-            axs[1].legend([f"Finger {i+1}" for i in range(len(center_positions))])
+            axs[1].legend(["Right finger", "Left finger"])
 
     fig.tight_layout()
     if show_figures:
@@ -86,23 +86,9 @@ def plot_overlapped_movements(centers, y_limit=20, x_limit=20,
         fig.savefig(saving_path, bbox_inches='tight')
 
 
-def plot_speeds(center_positions):
-    """Plot x-axis and y-axis speed in movement
-
-    Keyword arguments:
-    center_positions -- x-y tuples of positions corresponding to the center of
-                        the masks representing the fingers
-    """
-
-    fig = plt.figure()
-    ax = fig.add_subplot()
-    speeds = np.diff(center_positions, axis=1)
-    for finger in speeds:
-        ax.plot(np.sqrt(finger[:, 1]**2 + finger[:, 0]**2))
-    fig.show()
-
-
-def plot_finger_heatmaps(masks_list, frames_list, subplots=(1, 1), movement_index=False, show_figures=False, saving_path=None):
+def plot_finger_heatmaps(masks_list, frames_list, subplots=(1, 1),
+                         movement_index=False, show_figures=False,
+                         saving_path=None):
     """Plot heatmaps for the finger masks in the first frame of the video
 
     Keyword arguments:
@@ -127,9 +113,9 @@ def plot_finger_heatmaps(masks_list, frames_list, subplots=(1, 1), movement_inde
                 ax.text(750, 175 + 25*i,
                         f"Mov. index for finger {finger}: {movement:.2f}",
                         color='black')
-            fig.suptitle(f"Fingers' heatmaps and movement indexes", fontsize=15)
+            fig.suptitle("Fingers' heatmaps and movement indexes", fontsize=15)
         else:
-            fig.suptitle(f"Fingers' heatmaps", fontsize=15)
+            fig.suptitle("Fingers' heatmaps", fontsize=15)
 
     if show_figures:
         fig.show()

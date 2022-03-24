@@ -41,9 +41,13 @@ def extract_centers(masks, normalize=False, move_to_origin=False):
 
     for i in range(len(centers)):
         nans, x = nan_helper(centers[i, :, 0])
-        centers[i, nans, 0] = np.interp(x(nans), x(~nans), centers[i, ~nans, 0])
+        if not nans.all():
+            centers[i, nans, 0] = np.interp(x(nans), x(~nans),
+                                            centers[i, ~nans, 0])
         nans, x = nan_helper(centers[i, :, 1])
-        centers[i, nans, 1] = np.interp(x(nans), x(~nans), centers[i, ~nans, 1])
+        if not nans.all():
+            centers[i, nans, 1] = np.interp(x(nans), x(~nans),
+                                            centers[i, ~nans, 1])
 
     if normalize:
         finger_sizes = np.sqrt(fingers_size(masks))

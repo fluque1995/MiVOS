@@ -22,23 +22,28 @@ def plot_movements(center_positions, y_limit=20, x_limit=20,
         fig, axs = plt.subplots(1, 2, gridspec_kw={'width_ratios': [3, 1]})
 
         for i, finger in enumerate(center_positions):
-            axs[0].plot(finger[:, 0])
-            axs[1].plot(finger[:, 1], range(len(finger)))
+            vm = axs[0].plot(finger[:, 0])
+            hm = axs[1].plot(finger[:, 1], range(len(finger)))
 
         if y_limit is not None:
             axs[0].set_ylim([-y_limit, y_limit])
-        axs[0].legend([f"Finger {i+1}" for i in range(len(center_positions))])
+        #axs[0].legend([f"Finger {i+1}" for i in range(len(center_positions))])
+        axs[0].set_title(f"Fingers' vertical movement", fontsize=10, loc="center")
 
         if x_limit is not None:
             axs[1].set_xlim([-x_limit, x_limit])
 
         axs[1].set_ylim([0, len(finger)])
-        axs[1].legend([f"Finger {i+1}" for i in range(len(center_positions))])
+        #axs[1].legend([f"Finger {i+1}" for i in range(len(center_positions))])
+        axs[1].set_title(f"Fingers' horizontal movement", fontsize=10, loc="center")
         fig.tight_layout()
+
+        labels = [f"Finger {i+1}" for i in range(len(center_positions))]
+        fig.legend([vm, hm], labels = labels, bbox_to_anchor = (1.2, 0.6))
         if show_figures:
             fig.show()
         if saving_path is not None:
-            fig.savefig(saving_path)
+            fig.savefig(saving_path, bbox_inches='tight')
 
 
 def plot_overlapped_movements(centers, y_limit=20, x_limit=20,
@@ -78,7 +83,7 @@ def plot_overlapped_movements(centers, y_limit=20, x_limit=20,
         fig.show()
 
     if saving_path is not None:
-        fig.savefig(saving_path)
+        fig.savefig(saving_path, bbox_inches='tight')
 
 
 def plot_speeds(center_positions):
@@ -97,7 +102,7 @@ def plot_speeds(center_positions):
     fig.show()
 
 
-def plot_finger_heatmaps(masks_list, frames_list, subplots=(1, 1), movement_index=False, saving_path=None):
+def plot_finger_heatmaps(masks_list, frames_list, subplots=(1, 1), movement_index=False, show_figures=False, saving_path=None):
     """Plot heatmaps for the finger masks in the first frame of the video
 
     Keyword arguments:
@@ -105,6 +110,7 @@ def plot_finger_heatmaps(masks_list, frames_list, subplots=(1, 1), movement_inde
     frame          -- First frame of the video, to use as background
     movement_index -- Calculate movement index of the fingers in the video and
                       show them in the plot (default: False)
+    show_figures   -- Whether to display the graphs in a window or not
     saving_path    -- Path where we want to save the plot. If None, the image
                       is not saved (default None)
     """
@@ -118,10 +124,15 @@ def plot_finger_heatmaps(masks_list, frames_list, subplots=(1, 1), movement_inde
         if movement_index:
             moves = masks_manipulation.movement_index(mask)
             for i, (finger, movement) in enumerate(moves.items()):
-                ax.text(50, 300 + 20*i,
-                        f"Movement index for finger {finger}: {movement}",
-                        color='white')
+                ax.text(750, 175 + 25*i,
+                        f"Mov. index for finger {finger}: {movement:.2f}",
+                        color='black')
+            fig.suptitle(f"Fingers' heatmaps and movement indexes", fontsize=15)
+        else:
+            fig.suptitle(f"Fingers' heatmaps", fontsize=15)
 
-    #fig.show()
+    if show_figures:
+        fig.show()
+
     if saving_path is not None:
-        fig.savefig(saving_path)
+        fig.savefig(saving_path, bbox_inches='tight')

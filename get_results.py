@@ -1,5 +1,6 @@
 import csv
 import cv2
+import io_utils
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -8,8 +9,8 @@ import pickle as pkl
 from masks_manipulation import extract_centers, frequency_and_magnitude, movement_index
 from visualization.plotting import plot_movements, plot_finger_heatmaps
 
-masks_dir = '../Resultados_unificados/'
-output_dir = '../Results_unif/'
+masks_dir = '../Mascaras/'
+output_dir = '../Results_pre_savgol/'
 
 os.makedirs(output_dir, exist_ok=True)
 
@@ -39,15 +40,20 @@ for patient in os.listdir(masks_dir):
     for visit in os.listdir(os.path.join(masks_dir, patient)):
         for experiment in os.listdir(os.path.join(masks_dir, patient, visit)):
 
-            curr_path = os.path.join(masks_dir, patient, visit, experiment)
-            masks_path = os.path.join(curr_path, 'masks.pkl')
-            first_frame_path = os.path.join(curr_path, 'first_frame.png')
-            output_path = os.path.join(output_dir, patient, visit, experiment)
+            if (patient == 'P1' and visit == 'Visita_3_ON' and experiment == 'Perfil_izq' or
+            patient == 'P2' and visit == 'Visita_1_OFF' and experiment == 'Perfil_izq' or
+            patient == 'P3' and visit == 'Visita_1_OFF' and experiment == 'Perfil_izq' or
+            patient == 'P4' and visit == 'Visita_1_OFF' and experiment == 'Perfil_izq'):
+                print("Pasando")
+            else:
+                curr_path = os.path.join(masks_dir, patient, visit, experiment)
+                masks_path = os.path.join(curr_path, 'masks.pkl')
+                first_frame_path = os.path.join(curr_path, 'first_frame.png')
+                output_path = os.path.join(output_dir, patient, visit, experiment)
 
-            if os.path.exists(masks_path):
-                os.makedirs(output_path, exist_ok=True)
-                with open(masks_path, "rb") as f:
-                    masks = pkl.load(f)
+                if os.path.exists(masks_path):
+                    os.makedirs(output_path, exist_ok=True)
+                    masks = io_utils.load_masks(masks_path)
                     first_frame = cv2.cvtColor(
                         cv2.imread(first_frame_path), cv2.COLOR_BGR2RGB)
                     print(f'{patient}-{visit}-{experiment} loaded.')
@@ -57,17 +63,17 @@ for patient in os.listdir(masks_dir):
 
                     print('Computing frequency for the whole video...')
                     freq_and_mags = frequency_and_magnitude(curr_centers, fps=30)
-                    f1 = freq_and_mags[list(freq_and_mags)[0]] if not np.isnan(freq_and_mags[list(freq_and_mags)[0]]['x_mag']) else {}
+                    f1 = freq_and_mags[list(freq_and_mags)[0]] if not np.isnan(freq_and_mags[list(freq_and_mags)[0]]['x']['max_mag']) else {}
                     f2 = freq_and_mags[list(freq_and_mags)[1]] if len(freq_and_mags) > 1 else {}
 
-                    f1_x_whole = f1['x_freq'] if len(f1) > 0 else '-'
-                    m1_x_whole = f1['x_mag'] if len(f1) > 0 else '-'
-                    f1_y_whole = f1['y_freq'] if len(f1) > 0 else '-'
-                    m1_y_whole = f1['y_mag'] if len(f1) > 0 else '-'
-                    f2_x_whole = f2['x_freq'] if len(f2) > 0 else '-'
-                    m2_x_whole = f2['x_mag'] if len(f2) > 0 else '-'
-                    f2_y_whole = f2['y_freq'] if len(f2) > 0 else '-'
-                    m2_y_whole = f2['y_mag'] if len(f2) > 0 else '-'
+                    f1_x_whole = f1['x']['max_freq'] if len(f1) > 0 else '-'
+                    m1_x_whole = f1['x']['max_mag'] if len(f1) > 0 else '-'
+                    f1_y_whole = f1['y']['max_freq'] if len(f1) > 0 else '-'
+                    m1_y_whole = f1['y']['max_mag'] if len(f1) > 0 else '-'
+                    f2_x_whole = f2['y']['max_freq'] if len(f2) > 0 else '-'
+                    m2_x_whole = f2['x']['max_mag'] if len(f2) > 0 else '-'
+                    f2_y_whole = f2['y']['max_freq'] if len(f2) > 0 else '-'
+                    m2_y_whole = f2['y']['max_mag'] if len(f2) > 0 else '-'
 
                     print('Computing frequency with temporal_window=30...')
                     freq_and_mags_30 = frequency_and_magnitude(curr_centers, fps=30, temporal_window=30)
@@ -147,7 +153,7 @@ for patient in os.listdir(masks_dir):
                                      mv1_whole, mv2_whole,
                                      mv1_30, mv2_30,
                                      mv1_60, mv2_60])
-            else:
-                print(f'{patient}-{visit}-{experiment} masks not found. Skipping.')
+                else:
+                    print(f'{patient}-{visit}-{experiment} masks not found. Skipping.')
 
 statistics_csv.close()

@@ -109,13 +109,17 @@ def plot_finger_heatmaps(masks_list, frames_list, subplots=(1, 1),
 
         if movement_index:
             moves = masks_manipulation.movement_index(mask)
-            for i, (finger, movement) in enumerate(moves.items()):
-                ax.text(750, 175 + 25*i,
-                        f"Mov. index for finger {finger}: {movement:.2f}",
+            for finger_id, movement in moves.items():
+                finger = "right" if finger_id == 1 else "left"
+                ax.text(1050, 175 + 25*finger_id,
+                        f"Mov. index for {finger} finger: {movement:.2f}",
+                        ha='right',
                         color='black')
-            fig.suptitle("Fingers' heatmaps and movement indexes", fontsize=15)
+            ax.set_title("Fingers' heatmaps and movement indexes",
+                         fontsize=15, y=1.1)
         else:
-            fig.suptitle("Fingers' heatmaps", fontsize=15)
+            ax.set_title("Fingers' heatmaps",
+                         fontsize=15, y=1.1)
 
     if show_figures:
         fig.show()

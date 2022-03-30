@@ -14,8 +14,10 @@ def matrices_to_video(matrices: np.array, vid_path: str, scale_factor=2):
     vid_matrices = np.zeros((*matrices.shape, 3)).astype(np.uint8)
     vid_matrices[matrices == 1] = (0, 0, 255)
     vid_matrices[matrices == 2] = (0, 255, 0)
-    vid_matrices[matrices == 3] = (0, 255, 255)
-    vid_matrices[matrices == 4] = (255, 0, 255)
+    vid_matrices[matrices == 3] = (255, 0, 0)
+    vid_matrices[matrices == 4] = (0, 255, 255)
+    vid_matrices[matrices == 5] = (255, 0, 255)
+    vid_matrices[matrices == 6] = (255, 255, 0)
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(
         vid_path, fourcc, 20.0,

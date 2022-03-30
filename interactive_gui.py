@@ -325,7 +325,7 @@ class App(QWidget):
         self.show_current_frame()
 
     def save(self):
-        folder_path = os.path.join("results", self.vid_path)
+        folder_path = os.path.join("../Mascaras", self.vid_path)
 
         self.console_push_text(f'Saving masks and overlays in folder {folder_path}...')
         mask_dir = path.join(folder_path, 'mask')

@@ -1,5 +1,6 @@
 import numpy as np
 import sklearn
+import sklearn.decomposition
 import scipy.signal
 
 from .statistics import fingers_size
@@ -60,7 +61,7 @@ def extract_centers(masks, normalize=False, move_to_origin=False):
     return centers
 
 
-def extract_extreme_points(matrices):
+def extract_extreme_points(matrices, normalize=False, move_to_origin=False):
     '''Given the sequence of matrices where masks for fingers are extracted, compute
     the extreme points of each mask in each frame. Extreme points are defined as
     the center of each edge, if the mask is considered to be a rectangle. Using
@@ -82,24 +83,42 @@ def extract_extreme_points(matrices):
             frame_indices = finger_indices[finger_indices[:, 0] == n_frame, 1:]
             finger_center = finger_centers[n_frame]
 
-            # Calculate direction of maximum variance (X-axis or Y-axis)
+            # # Calculate direction of maximum variance (X-axis or Y-axis)
             min_x = frame_indices[:, 0].min()
             max_x = frame_indices[:, 0].max()
             min_y = frame_indices[:, 1].min()
             max_y = frame_indices[:, 1].max()
             if max_x - min_x > max_y - min_y:
-                max_gt, min_gt = max_x, min_x
-                max_lt, min_lt = max_y, min_y
+            #     max_gt, min_gt = max_x, min_x
+            #     max_lt, min_lt = max_y, min_y
                 center_gt, center_lt = finger_center[0], finger_center[1]
             else:
-                max_gt, min_gt = max_y, min_y
-                max_lt, min_lt = max_x, min_x
+            #     max_gt, min_gt = max_y, min_y
+            #     max_lt, min_lt = max_x, min_x
                 center_gt, center_lt = finger_center[1], finger_center[0]
 
             # Fit PCA and get max and min variance directions
             pca.fit(frame_indices)
+            transformed_fingers = pca.transform(frame_indices)
+            max_gt_id = np.argmax(transformed_fingers[0].max())
+            min_gt_id = np.argmax(transformed_fingers[0].min())
+            max_lt_id = np.argmax(transformed_fingers[1].max())
+            min_lt_id = np.argmax(transformed_fingers[1].min())
+            max_gt = transformed_fingers[max_gt_id]
+            min_gt = transformed_fingers[min_gt_id]
+            max_lt = transformed_fingers[max_lt_id]
+            min_lt = transformed_fingers[min_lt_id]
+            max_gt, min_gt, max_lt, min_lt = pca.inverse_transform(
+                [max_gt, max_lt, min_gt, min_lt])
+
             var_gt = pca.components_[0]
             var_lt = pca.components_[1]
+
+            if (var_gt[0] > 0 and var_gt[1] < 0) or (np.all(var_gt < 0)):
+                var_gt = -var_gt
+
+            if (var_lt[0] > 0 and var_lt[1] < 0) or (np.all(var_lt < 0)):
+                var_lt = -var_lt
 
             extreme_points[idx, n_frame] = [
                 [finger_center[0] + (min_gt - center_gt)*var_gt[0],
@@ -112,7 +131,16 @@ def extract_extreme_points(matrices):
                  finger_center[1] + (max_lt - center_lt)*var_lt[1]],
             ]
 
-    return extreme_points.astype(int)
+    if normalize:
+        finger_sizes = np.sqrt(fingers_size(matrices))
+        for i, finger_size in enumerate(finger_sizes):
+            extreme_points[i] /= finger_size/10
+
+    if move_to_origin:
+        extreme_means = extreme_points.mean(axis=1, keepdims=True)
+        extreme_points = extreme_points - extreme_means
+
+    return extreme_points
 
 
 def savgol_smoothing(finger_centers, window_length=9, polyorder=2):

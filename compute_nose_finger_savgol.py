@@ -20,51 +20,51 @@ for patient, visit, experiment in combined_paths:
     masks_file = os.path.join(masks_folder, patient, visit,
                               experiment, "masks.pkl")
     graphs_folder = os.path.join(output_folder, patient, visit, experiment)
-    os.makedirs(graphs_folder, exist_ok=True)
-
     try:
         masks = io_utils.load_masks(masks_file)
     except:
         continue
 
+    os.makedirs(graphs_folder, exist_ok=True)
     centers = extract_centers(masks, normalize=True, move_to_origin=True)
     smoothed_centers = savgol_smoothing(centers, 9, 2)
 
     plot_movements(centers, x_limit=None, y_limit=None,
-                   saving_path=os.path.join(graphs_folder, "movement_original.pdf"))
+                   saving_path=os.path.join(graphs_folder, "movement_original.png"))
     plot_movements(smoothed_centers, x_limit=None, y_limit=None,
-                   saving_path=os.path.join(graphs_folder, "movement_smoothed.pdf"))
+                   saving_path=os.path.join(graphs_folder, "movement_smoothed.png"))
 
 
     differences = centers - smoothed_centers
 
     with plt.style.context(('ggplot')):
         fig, ax = plt.subplots(nrows=2, ncols=2, sharey=True)
+        fig.suptitle(f"{patient} - {visit} - {experiment}")
         plt.subplots_adjust(hspace=0.3)
 
         ax = ax.ravel()
         curr_data = differences[0, :, 0]
-        ax[0].hist(curr_data, range=[-10, 10],
+        ax[0].hist(curr_data, bins=50, range=[-10, 10],
                    label=f"STD: {curr_data.std():.3f}", edgecolor='black')
         ax[0].legend(prop={'size': 6})
         ax[0].set_title("Right finger, vertical movement", fontsize='small')
 
         curr_data = differences[0, :, 1]
-        ax[1].hist(curr_data, range=[-10, 10],
+        ax[1].hist(curr_data, bins=50, range=[-10, 10],
                    label=f"STD: {curr_data.std():.3f}", edgecolor='black')
         ax[1].legend(prop={'size': 6})
         ax[1].set_title("Right finger, horizontal movement", fontsize='small')
 
         curr_data = differences[1, :, 0]
-        ax[2].hist(curr_data, range=[-10, 10], color='#348ABD',
+        ax[2].hist(curr_data, bins=50, range=[-10, 10], color='#348ABD',
                    label=f"STD: {curr_data.std():.3f}", edgecolor='black')
         ax[2].legend(prop={'size': 6})
         ax[2].set_title("Left finger, vertical movement", fontsize='small')
 
         curr_data = differences[1, :, 1]
-        ax[3].hist(curr_data, range=[-10, 10], color='#348ABD',
+        ax[3].hist(curr_data, bins=50, range=[-10, 10], color='#348ABD',
                    label=f"STD: {curr_data.std():.3f}", edgecolor='black')
         ax[3].legend(prop={'size': 6})
         ax[3].set_title("Left finger, horizontal movement", fontsize='small')
 
-    fig.savefig(os.path.join(graphs_folder, "stds.pdf"), bbox_inches='tight')
+    fig.savefig(os.path.join(graphs_folder, "stds.png"), bbox_inches='tight')

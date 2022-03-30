@@ -6,7 +6,10 @@ import numpy as np
 import os
 import pickle as pkl
 
-from masks_manipulation import extract_centers, frequency_and_magnitude, movement_index
+from masks_manipulation import (
+    extract_centers, extract_extreme_points,
+    frequency_and_magnitude, movement_index
+)
 from visualization.plotting import plot_movements, plot_finger_heatmaps
 
 masks_dir = '../Mascaras/'
@@ -36,9 +39,12 @@ header = ['Paciente', 'Visita', 'Experimento',
 
 writer.writerow(header)
 
-for patient in os.listdir(masks_dir):
-    for visit in os.listdir(os.path.join(masks_dir, patient)):
-        for experiment in os.listdir(os.path.join(masks_dir, patient, visit)):
+for patient in sorted(os.listdir(masks_dir)):
+    for visit in sorted(os.listdir(os.path.join(masks_dir, patient))):
+        for experiment in sorted(os.listdir(os.path.join(masks_dir, patient, visit))):
+            # Do not process nose-finger experiment with these methods
+            if experiment[0:3] == 'D-N':
+                continue
 
             curr_path = os.path.join(masks_dir, patient, visit, experiment)
             masks_path = os.path.join(curr_path, 'masks.pkl')
@@ -52,11 +58,24 @@ for patient in os.listdir(masks_dir):
                     cv2.imread(first_frame_path), cv2.COLOR_BGR2RGB)
                 print(f'{patient}-{visit}-{experiment} loaded.')
 
-                print('Extracting centers...')
-                curr_centers = extract_centers(masks, normalize=True, move_to_origin=True)
+                if experiment[0:5] == 'Suero':
+                    curr_points = extract_extreme_points(masks, normalize=False,
+                                                         move_to_origin=True)
+                    if experiment == 'Suero_der':
+                        curr_points = curr_points[:, :, 1, :]
+                    elif experiment == 'Suero_izq':
+                        curr_points = curr_points[:, :, 0, :]
+                    else:
+                        print("This experiment is not supported")
+                        continue
+
+                else:
+                    print('Extracting centers...')
+                    curr_points = extract_centers(masks, normalize=True,
+                                                  move_to_origin=True)
 
                 print('Computing frequency for the whole video...')
-                freq_and_mags = frequency_and_magnitude(curr_centers, fps=30)
+                freq_and_mags = frequency_and_magnitude(curr_points, fps=30)
                 f1 = freq_and_mags[list(freq_and_mags)[0]] if not np.isnan(freq_and_mags[list(freq_and_mags)[0]]['x']['max_mag']) else {}
                 f2 = freq_and_mags[list(freq_and_mags)[1]] if len(freq_and_mags) > 1 else {}
 
@@ -70,7 +89,7 @@ for patient in os.listdir(masks_dir):
                 m2_y_whole = f2['y']['max_mag'] if len(f2) > 0 else '-'
 
                 print('Computing frequency with temporal_window=30...')
-                freq_and_mags_30 = frequency_and_magnitude(curr_centers, fps=30, temporal_window=30)
+                freq_and_mags_30 = frequency_and_magnitude(curr_points, fps=30, temporal_window=30)
                 f1_30 = freq_and_mags_30[list(freq_and_mags_30)[0]] if not np.isnan(freq_and_mags_30[list(freq_and_mags_30)[0]]['x_mag']).all() else {}
                 f2_30 = freq_and_mags_30[list(freq_and_mags_30)[1]] if len(freq_and_mags_30) > 1 else {}
 
@@ -84,7 +103,7 @@ for patient in os.listdir(masks_dir):
                 m2_y_30 = f2_30['y_mag'] if len(f2_30) > 0 else '-'
 
                 print('Computing frequency with temporal_window=60...')
-                freq_and_mags_60 = frequency_and_magnitude(curr_centers, fps=30, temporal_window=60)
+                freq_and_mags_60 = frequency_and_magnitude(curr_points, fps=30, temporal_window=60)
                 f1_60 = freq_and_mags_60[list(freq_and_mags_60)[0]] if not np.isnan(freq_and_mags_60[list(freq_and_mags_60)[0]]['x_mag']).all() else {}
                 f2_60 = freq_and_mags_60[list(freq_and_mags_60)[1]] if len(freq_and_mags_60) > 1 else {}
 
@@ -98,11 +117,18 @@ for patient in os.listdir(masks_dir):
                 m2_y_60 = f2_60['y_mag'] if len(f2_60) > 0 else '-'
 
                 print('Plotting movements...')
-                if experiment[0:3] == 'D-N':
-                    plot_movements(curr_centers, y_limit=50, x_limit=150, saving_path=os.path.join(output_path, 'movement.pdf'))
+                if experiment[:3] == 'D-N':
+                    x_limit = 50
+                    y_limit = 150
+                elif experiment[:5] == 'Suero':
+                    x_limit = None
+                    y_limit = None
                 else:
-                    plot_movements(curr_centers, saving_path=os.path.join(output_path, 'movement.pdf'))
+                    x_limit = 20
+                    y_limit = 20
 
+                plot_movements(curr_points, x_limit=x_limit, y_limit=y_limit,
+                               saving_path=os.path.join(output_path, 'movement.png'))
                 print('Computing movement index for the whole video...')
                 mov_indices = movement_index(masks)
                 mv1_whole = mov_indices[list(mov_indices)[0]]

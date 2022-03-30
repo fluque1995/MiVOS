@@ -100,10 +100,10 @@ def extract_extreme_points(matrices, normalize=False, move_to_origin=False):
             # Fit PCA and get max and min variance directions
             pca.fit(frame_indices)
             transformed_fingers = pca.transform(frame_indices)
-            max_gt_id = np.argmax(transformed_fingers[0].max())
-            min_gt_id = np.argmax(transformed_fingers[0].min())
-            max_lt_id = np.argmax(transformed_fingers[1].max())
-            min_lt_id = np.argmax(transformed_fingers[1].min())
+            max_gt_id = np.argmax(transformed_fingers[0])
+            min_gt_id = np.argmin(transformed_fingers[0])
+            max_lt_id = np.argmax(transformed_fingers[1])
+            min_lt_id = np.argmin(transformed_fingers[1])
             max_gt = transformed_fingers[max_gt_id]
             min_gt = transformed_fingers[min_gt_id]
             max_lt = transformed_fingers[max_lt_id]
@@ -111,6 +111,7 @@ def extract_extreme_points(matrices, normalize=False, move_to_origin=False):
             max_gt, min_gt, max_lt, min_lt = pca.inverse_transform(
                 [max_gt, max_lt, min_gt, min_lt])
 
+            print(max_gt, min_gt, max_lt, min_lt)
             var_gt = pca.components_[0]
             var_lt = pca.components_[1]
 

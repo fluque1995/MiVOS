@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 import sklearn
 import sklearn.decomposition
@@ -61,7 +62,7 @@ def extract_centers(masks, normalize=False, move_to_origin=False):
     return centers
 
 
-def extract_extreme_points(matrices, normalize=False, move_to_origin=False):
+def extract_extreme_points_old(matrices, normalize=False, move_to_origin=False):
     '''Given the sequence of matrices where masks for fingers are extracted, compute
     the extreme points of each mask in each frame. Extreme points are defined as
     the center of each edge, if the mask is considered to be a rectangle. Using
@@ -83,35 +84,34 @@ def extract_extreme_points(matrices, normalize=False, move_to_origin=False):
             frame_indices = finger_indices[finger_indices[:, 0] == n_frame, 1:]
             finger_center = finger_centers[n_frame]
 
-            # # Calculate direction of maximum variance (X-axis or Y-axis)
+            # Fit PCA and get max and min variance directions
+            pca.fit(frame_indices)
+            transformed_fingers = pca.transform(frame_indices)
+            max_gt_id = np.argmax(transformed_fingers[:, 0])
+            min_gt_id = np.argmin(transformed_fingers[:, 0])
+            max_lt_id = np.argmax(transformed_fingers[:, 1])
+            min_lt_id = np.argmin(transformed_fingers[:, 1])
+            max_gt = transformed_fingers[max_gt_id]
+            min_gt = transformed_fingers[min_gt_id]
+            max_lt = transformed_fingers[max_lt_id]
+            min_lt = transformed_fingers[min_lt_id]
+            max_gt_full, max_lt_full, min_gt_full, min_lt_full = pca.inverse_transform(
+                [max_gt, max_lt, min_gt, min_lt])
+
+            # Calculate direction of maximum variance (X-axis or Y-axis)
             min_x = frame_indices[:, 0].min()
             max_x = frame_indices[:, 0].max()
             min_y = frame_indices[:, 1].min()
             max_y = frame_indices[:, 1].max()
             if max_x - min_x > max_y - min_y:
-            #     max_gt, min_gt = max_x, min_x
-            #     max_lt, min_lt = max_y, min_y
+                max_gt, min_gt = max_gt_full[0], min_gt_full[0]
+                max_lt, min_lt = max_lt_full[1], min_lt_full[1]
                 center_gt, center_lt = finger_center[0], finger_center[1]
             else:
-            #     max_gt, min_gt = max_y, min_y
-            #     max_lt, min_lt = max_x, min_x
+                max_gt, min_gt = max_gt_full[1], min_gt_full[1]
+                max_lt, min_lt = max_lt_full[0], min_lt_full[0]
                 center_gt, center_lt = finger_center[1], finger_center[0]
 
-            # Fit PCA and get max and min variance directions
-            pca.fit(frame_indices)
-            transformed_fingers = pca.transform(frame_indices)
-            max_gt_id = np.argmax(transformed_fingers[0])
-            min_gt_id = np.argmin(transformed_fingers[0])
-            max_lt_id = np.argmax(transformed_fingers[1])
-            min_lt_id = np.argmin(transformed_fingers[1])
-            max_gt = transformed_fingers[max_gt_id]
-            min_gt = transformed_fingers[min_gt_id]
-            max_lt = transformed_fingers[max_lt_id]
-            min_lt = transformed_fingers[min_lt_id]
-            max_gt, min_gt, max_lt, min_lt = pca.inverse_transform(
-                [max_gt, max_lt, min_gt, min_lt])
-
-            print(max_gt, min_gt, max_lt, min_lt)
             var_gt = pca.components_[0]
             var_lt = pca.components_[1]
 
@@ -142,6 +142,65 @@ def extract_extreme_points(matrices, normalize=False, move_to_origin=False):
         extreme_points = extreme_points - extreme_means
 
     return extreme_points
+
+
+def extract_extreme_points(matrices, normalize=False, move_to_origin=False):
+    '''Given the sequence of matrices where masks for fingers are extracted, compute
+    the extreme points of each mask in each frame. Extreme points are defined as
+    the center of each edge, if the mask is considered to be a rectangle. Using
+    PCA, those points can be calculated using the principal components, the
+    center of the mask, and the distance between the border of the mask and the
+    center.
+    '''
+
+    def rotate_point(point, center, angle):
+        px, py = point
+        cx, cy = center
+        angle_rad = angle*np.pi/180
+        px -= cx
+        py -= cy
+        sin = np.sin(angle_rad)
+        cos = np.cos(angle_rad)
+        newx = px * cos - py * sin + cx
+        newy = px * sin + py * cos + cy
+
+        return np.array((newx, newy))
+
+    n_masks = matrices.max().astype(int)
+    extreme_points = np.zeros((n_masks, matrices.shape[0], 4, 2)).astype(int)
+    rectangles = []
+    for idx in range(n_masks):
+        finger = idx+1
+        finger_indices = np.argwhere(matrices == finger)
+        for n_frame in range(matrices.shape[0]):
+            frame_indices = finger_indices[finger_indices[:, 0] == n_frame, 1:]
+
+            rect = cv2.minAreaRect(frame_indices[:, [1,0]])
+            (cx, cy), (w, h), angle = rect
+            rectangles.append(rect)
+
+            point_right = cx + w/2, cy
+            point_left = cx - w/2, cy
+            point_top = cx, cy - h/2
+            point_bottom = cx, cy + h/2
+            point_right = rotate_point(point_right, (cx, cy), angle)
+            point_left = rotate_point(point_left, (cx, cy), angle)
+            point_top = rotate_point(point_top, (cx, cy), angle)
+            point_bottom = rotate_point(point_bottom, (cx, cy), angle)
+            extreme_points[idx, n_frame] = [
+                point_left[[1,0]], point_right[[1,0]], point_top[[1,0]], point_bottom[[1,0]]
+            ]
+
+    if normalize:
+        finger_sizes = np.sqrt(fingers_size(matrices))
+        for i, finger_size in enumerate(finger_sizes):
+            extreme_points[i] /= finger_size/10
+
+    if move_to_origin:
+        extreme_means = extreme_points.mean(axis=1, keepdims=True)
+        extreme_points = extreme_points - extreme_means
+
+    return extreme_points, rectangles
 
 
 def savgol_smoothing(finger_centers, window_length=9, polyorder=2):

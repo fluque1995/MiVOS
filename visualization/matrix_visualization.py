@@ -28,4 +28,3 @@ def matrices_to_video(matrices: np.array, vid_path: str, scale_factor=2):
         out.write(frame)
 
     out.release()
-    return vid_matrices

@@ -48,7 +48,7 @@ def frequency_and_magnitude(finger_points, fps=30,
     magnitude_thr   -- Threshold for magnitude to consider the frequency
                        oscillation as significative
     """
-    results = {}
+    results = []
     for i, finger in enumerate(finger_points):
         x_points = finger[:, 0]
         y_points = finger[:, 1]
@@ -62,7 +62,7 @@ def frequency_and_magnitude(finger_points, fps=30,
             # is placed in the middle of the vector. If no magnitude value is
             # over the threshold, we just return the biggest one
             if len(signif_indices) > 0:
-                max_id_x = signif_indices[len(signif_indices)//2 - 1]
+                max_id_x = signif_indices[len(signif_indices)//2 - 1][0]
             else:
                 max_id_x = np.argmax(x_fft)
 
@@ -71,18 +71,18 @@ def frequency_and_magnitude(finger_points, fps=30,
             significative_y_fft = (y_fft > magnitude_thr)
             signif_indices = np.argwhere(significative_y_fft == True)
             if len(signif_indices) > 0:
-                max_id_y = signif_indices[len(signif_indices)//2 - 1]
+                max_id_y = signif_indices[len(signif_indices)//2 - 1][0]
             else:
                 max_id_y = np.argmax(y_fft)
 
-            results[i] = {
+            results.append({
                 'x': {'mag': x_fft, 'freq': x_freqs,
                       'max_mag': x_fft[max_id_x],
                       'max_freq': abs(fps*x_freqs[max_id_x])},
                 'y':  {'mag': y_fft, 'freq': y_freqs,
                        'max_mag': y_fft[max_id_y],
                        'max_freq': abs(fps*y_freqs[max_id_y])}
-            }
+            })
 
         else:
             x_mags, x_freqs, y_mags, y_freqs = [], [], [], []
@@ -103,9 +103,9 @@ def frequency_and_magnitude(finger_points, fps=30,
                 y_mags.append(y_fft[max_id_y])
                 y_freqs.append(abs(fps*y_freq[max_id_y]))
 
-            results[i] = {
+            results.append({
                 'x_mag': x_mags, 'x_freq': x_freqs,
                 'y_mag': y_mags, 'y_freq': y_freqs
-            }
+            })
 
     return results

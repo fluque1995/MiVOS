@@ -59,12 +59,18 @@ for patient in sorted(os.listdir(masks_dir)):
                 print(f'{patient}-{visit}-{experiment} loaded.')
 
                 if experiment[0:5] == 'Suero':
-                    curr_points = extract_extreme_points(masks, normalize=False,
-                                                         move_to_origin=True)
+                    extremes = extract_extreme_points(
+                        masks, normalize=True, move_to_origin=True)
+                    centers = extract_centers(
+                        masks, normalize=True, move_to_origin=True)
                     if experiment == 'Suero_der':
-                        curr_points = curr_points[:, :, 1, :]
+                        bottle = extremes[0, :, 1, :]
+                        finger = centers[1]
+                        curr_points = np.stack([bottle, finger])
                     elif experiment == 'Suero_izq':
-                        curr_points = curr_points[:, :, 0, :]
+                        finger = centers[0]
+                        bottle = extremes[1, :, 0, :]
+                        curr_points = np.stack([finger, bottle])
                     else:
                         print("This experiment is not supported")
                         continue
@@ -76,9 +82,14 @@ for patient in sorted(os.listdir(masks_dir)):
 
                 print('Computing frequency for the whole video...')
                 freq_and_mags = frequency_and_magnitude(curr_points, fps=30)
-                f1 = freq_and_mags[list(freq_and_mags)[0]] if not np.isnan(freq_and_mags[list(freq_and_mags)[0]]['x']['max_mag']) else {}
-                f2 = freq_and_mags[list(freq_and_mags)[1]] if len(freq_and_mags) > 1 else {}
-
+                try:
+                    f1 = freq_and_mags[0]
+                except:
+                    f1 = []
+                try:
+                    f2 = freq_and_mags[1]
+                except:
+                    f2 = []
                 f1_x_whole = f1['x']['max_freq'] if len(f1) > 0 else '-'
                 m1_x_whole = f1['x']['max_mag'] if len(f1) > 0 else '-'
                 f1_y_whole = f1['y']['max_freq'] if len(f1) > 0 else '-'
@@ -90,8 +101,14 @@ for patient in sorted(os.listdir(masks_dir)):
 
                 print('Computing frequency with temporal_window=30...')
                 freq_and_mags_30 = frequency_and_magnitude(curr_points, fps=30, temporal_window=30)
-                f1_30 = freq_and_mags_30[list(freq_and_mags_30)[0]] if not np.isnan(freq_and_mags_30[list(freq_and_mags_30)[0]]['x_mag']).all() else {}
-                f2_30 = freq_and_mags_30[list(freq_and_mags_30)[1]] if len(freq_and_mags_30) > 1 else {}
+                try:
+                    f1_30 = freq_and_mags_30[0]
+                except:
+                    f1_30 = []
+                try:
+                    f2_30 = freq_and_mags_30[1]
+                except:
+                    f2_30 = []
 
                 f1_x_30 = f1_30['x_freq'] if len(f1_30) > 0 else '-'
                 m1_x_30 = f1_30['x_mag'] if len(f1_30) > 0 else '-'
@@ -104,8 +121,14 @@ for patient in sorted(os.listdir(masks_dir)):
 
                 print('Computing frequency with temporal_window=60...')
                 freq_and_mags_60 = frequency_and_magnitude(curr_points, fps=30, temporal_window=60)
-                f1_60 = freq_and_mags_60[list(freq_and_mags_60)[0]] if not np.isnan(freq_and_mags_60[list(freq_and_mags_60)[0]]['x_mag']).all() else {}
-                f2_60 = freq_and_mags_60[list(freq_and_mags_60)[1]] if len(freq_and_mags_60) > 1 else {}
+                try:
+                    f1_60 = freq_and_mags_60[0]
+                except:
+                    f1_60 = []
+                try:
+                    f2_60 = freq_and_mags_60[1]
+                except:
+                    f2_60 = []
 
                 f1_x_60 = f1_60['x_freq'] if len(f1_60) > 0 else '-'
                 m1_x_60 = f1_60['x_mag'] if len(f1_60) > 0 else '-'

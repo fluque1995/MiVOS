@@ -167,17 +167,19 @@ def extract_extreme_points(matrices, normalize=False, move_to_origin=False):
         return np.array((newx, newy))
 
     n_masks = matrices.max().astype(int)
-    extreme_points = np.zeros((n_masks, matrices.shape[0], 4, 2)).astype(int)
-    rectangles = []
+    extreme_points = np.zeros((n_masks, matrices.shape[0], 4, 2))
     for idx in range(n_masks):
         finger = idx+1
         finger_indices = np.argwhere(matrices == finger)
         for n_frame in range(matrices.shape[0]):
             frame_indices = finger_indices[finger_indices[:, 0] == n_frame, 1:]
 
-            rect = cv2.minAreaRect(frame_indices[:, [1,0]])
-            (cx, cy), (w, h), angle = rect
-            rectangles.append(rect)
+            (cx, cy), (w, h), angle = cv2.minAreaRect(
+                frame_indices[:, [1, 0]])
+
+            if h > w:
+                h, w = w, h
+                angle = angle - 90
 
             point_right = cx + w/2, cy
             point_left = cx - w/2, cy
@@ -188,19 +190,21 @@ def extract_extreme_points(matrices, normalize=False, move_to_origin=False):
             point_top = rotate_point(point_top, (cx, cy), angle)
             point_bottom = rotate_point(point_bottom, (cx, cy), angle)
             extreme_points[idx, n_frame] = [
-                point_left[[1,0]], point_right[[1,0]], point_top[[1,0]], point_bottom[[1,0]]
+                point_left[[1, 0]],
+                point_right[[1, 0]],
+                point_top[[1, 0]],
+                point_bottom[[1, 0]]
             ]
 
     if normalize:
         finger_sizes = np.sqrt(fingers_size(matrices))
         for i, finger_size in enumerate(finger_sizes):
             extreme_points[i] /= finger_size/10
-
     if move_to_origin:
         extreme_means = extreme_points.mean(axis=1, keepdims=True)
         extreme_points = extreme_points - extreme_means
 
-    return extreme_points, rectangles
+    return extreme_points
 
 
 def savgol_smoothing(finger_centers, window_length=9, polyorder=2):

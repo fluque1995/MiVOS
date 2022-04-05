@@ -4,11 +4,11 @@ import io_utils
 from visualization import matrices_to_video
 from masks_manipulation import extract_extreme_points
 
-path = '../Mascaras/P1/Visita_1_OFF/Suero_der'
+path = '../Mascaras/P2/Visita_1_OFF/Suero_izq'
 output_vid = 'output_der.mp4'
 
 masks = io_utils.load_masks(os.path.join(path, 'masks.pkl'))
-extreme_points, rectangles = extract_extreme_points(masks)
+extreme_points = extract_extreme_points(masks)
 
 for i, mask in enumerate(masks):
     curr_frame_points = extreme_points[:, i, ...]

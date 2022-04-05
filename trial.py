@@ -8,25 +8,17 @@ from visualization.plotting import plot_movements
 from io_utils import load_masks
 
 
-patient = "../Mascaras/P3"
+patient = "../Mascaras/P1"
 experiment = 'Suero_izq'
+visit = 'Visita_2_ON'
 
-results = []
+masks = load_masks(os.path.join(patient, visit, experiment, "masks.pkl"))
+extreme_points = extract_extreme_points(masks, move_to_origin=True)
 
-points = []
-ys = []
-
-for visit in ['Visita_1_OFF', 'Visita_2_ON', 'Visita_3_ON']:
-    masks = load_masks(os.path.join(patient, visit, experiment, "masks.pkl"))
-    curr_points = extract_extreme_points(masks, move_to_origin=True)
-    curr_extreme = curr_points[:, :, 0, :]
-
-    points.append(curr_extreme)
-    results.append(frequency_and_magnitude(curr_extreme, fps=30))
-
+results = frequency_and_magnitude(extreme_points, fps=30)
 
 fig, ax = plt.subplots(1,1)
-ax.plot(results[1][0]['x']['freq'], results[1][0]['x']['mag'])
+ax.plot(results[0]['x']['freq'], results[0]['x']['mag'])
 fig.show()
 
-plot_movements(points[0], y_limit=None, x_limit=None, show_figures=True)
+plot_movements(extreme_points[0], y_limit=None, x_limit=None, show_figures=True)

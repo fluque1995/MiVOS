@@ -22,7 +22,7 @@ def plot_movements(center_positions, y_limit=20, x_limit=20,
         fig, axs = plt.subplots(1, 2, gridspec_kw={'width_ratios': [3, 1]})
 
         for i, finger in enumerate(center_positions):
-            vm = axs[0].plot(finger[:, 0])
+            vm = axs[0].plot(-finger[:, 0])
             hm = axs[1].plot(finger[:, 1], range(len(finger)))
 
         if y_limit is not None:
@@ -34,6 +34,7 @@ def plot_movements(center_positions, y_limit=20, x_limit=20,
             axs[1].set_xlim([-x_limit, x_limit])
 
         axs[1].set_ylim([0, len(finger)])
+        axs[1].invert_yaxis()
         #axs[1].legend([f"Finger {i+1}" for i in range(len(center_positions))])
         axs[1].set_title(f"Fingers' horizontal movement", fontsize=10, loc="center")
         fig.tight_layout()

@@ -81,7 +81,9 @@ for patient in sorted(os.listdir(masks_dir)):
                                                   move_to_origin=True)
 
                 print('Computing frequency for the whole video...')
-                freq_and_mags = frequency_and_magnitude(curr_points, fps=30)
+                freq_and_mags = frequency_and_magnitude(
+                    curr_points, fps=30,
+                    graph_path=os.path.join(output_path, "fourier.png"))
                 try:
                     f1 = freq_and_mags[0]
                 except:
@@ -100,7 +102,8 @@ for patient in sorted(os.listdir(masks_dir)):
                 m2_y_whole = f2['y']['max_mag'] if len(f2) > 0 else '-'
 
                 print('Computing frequency with temporal_window=30...')
-                freq_and_mags_30 = frequency_and_magnitude(curr_points, fps=30, temporal_window=30)
+                freq_and_mags_30 = frequency_and_magnitude(
+                    curr_points, fps=30, temporal_window=30)
                 try:
                     f1_30 = freq_and_mags_30[0]
                 except:

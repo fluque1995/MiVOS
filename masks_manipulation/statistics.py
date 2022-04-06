@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import logging
 
 def fingers_size(masks, temporal_window=None):
     """Calculate the size of each finger in the video from the masks
@@ -33,7 +34,8 @@ def fingers_size(masks, temporal_window=None):
 
 
 def frequency_and_magnitude(finger_points, fps=30,
-                            temporal_window=None, magnitude_thr=50):
+                            temporal_window=None, magnitude_thr=50,
+                            graph_path=None):
     """Calculate oscillation frequency and magnitude of finger points using fast
     fourier transform. The oscillation frequency is calculated as the biggest
     frequency whose magnitude is greater than a certain threshold
@@ -47,6 +49,10 @@ def frequency_and_magnitude(finger_points, fps=30,
                        video (default None)
     magnitude_thr   -- Threshold for magnitude to consider the frequency
                        oscillation as significative
+    graph_path      -- Path to the file to store the frequency-magnitude graph.
+                       If None, the graph is not generated (default None). The
+                       graph is only generated when there is no temporal window
+
     """
     results = []
     for i, finger in enumerate(finger_points):
@@ -83,6 +89,17 @@ def frequency_and_magnitude(finger_points, fps=30,
                        'max_mag': y_fft[max_id_y],
                        'max_freq': abs(fps*y_freqs[max_id_y])}
             })
+            if graph_path is not None:
+                with plt.style.context("ggplot"):
+                    fig, axs = plt.subplots(nrows=2, ncols=1)
+                    axs[0].plot(
+                        fps*x_freqs[:len(x_freqs) // 2],
+                        x_fft[:len(x_fft) // 2]
+                    )
+                    axs[1].plot(
+                        fps*y_freqs[:len(y_freqs) // 2],
+                        y_fft[:len(y_fft) // 2])
+                    fig.savefig(graph_path)
 
         else:
             x_mags, x_freqs, y_mags, y_freqs = [], [], [], []
@@ -107,5 +124,10 @@ def frequency_and_magnitude(finger_points, fps=30,
                 'x_mag': x_mags, 'x_freq': x_freqs,
                 'y_mag': y_mags, 'y_freq': y_freqs
             })
+            if graph_path is not None:
+                logging.warning((
+                    "The method is not suitable for plotting when working on "
+                    "temporal windows. Please call the method with no temporal "
+                    "window if you want to store the graphs"))
 
     return results

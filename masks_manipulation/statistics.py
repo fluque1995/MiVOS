@@ -1,6 +1,7 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import logging
+import matplotlib.pyplot as plt
+import numpy as np
+import os
 
 def fingers_size(masks, temporal_window=None):
     """Calculate the size of each finger in the video from the masks
@@ -89,6 +90,7 @@ def frequency_and_magnitude(finger_points, fps=30,
                        'max_mag': y_fft[max_id_y],
                        'max_freq': abs(fps*y_freqs[max_id_y])}
             })
+
             if graph_path is not None:
                 with plt.style.context("ggplot"):
                     fig, axs = plt.subplots(nrows=2, ncols=1)
@@ -99,7 +101,9 @@ def frequency_and_magnitude(finger_points, fps=30,
                     axs[1].plot(
                         fps*y_freqs[:len(y_freqs) // 2],
                         y_fft[:len(y_fft) // 2])
-                    fig.savefig(graph_path)
+
+                    graph_preffix = "right_" if i == 0 else "left_"
+                    fig.savefig(os.path.split(graph_path)[0] + "/" + graph_preffix + os.path.split(graph_path)[1])
 
         else:
             x_mags, x_freqs, y_mags, y_freqs = [], [], [], []
@@ -124,6 +128,7 @@ def frequency_and_magnitude(finger_points, fps=30,
                 'x_mag': x_mags, 'x_freq': x_freqs,
                 'y_mag': y_mags, 'y_freq': y_freqs
             })
+
             if graph_path is not None:
                 logging.warning((
                     "The method is not suitable for plotting when working on "

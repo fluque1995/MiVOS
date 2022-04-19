@@ -981,7 +981,7 @@ if __name__ == '__main__':
 
     # Arguments parsing
     parser = ArgumentParser()
-    parser.add_argument('--prop_model', default='saves/stcn.pth')
+    parser.add_argument('--prop_model', default='saves/stcn_efficientnet.pth')
     parser.add_argument('--fusion_model', default='saves/fusion_stcn.pth')
     parser.add_argument('--s2m_model', default='saves/s2m_mobilenet.pth')
     parser.add_argument('--fbrs_model', default='saves/fbrs.pth')

@@ -13,11 +13,11 @@ from model.propagation.modules import *
 class Decoder(nn.Module):
     def __init__(self):
         super().__init__()
-        self.compress = ResBlock(1024, 512)
-        self.up_16_8 = UpsampleBlock(512, 512, 256) # 1/16 -> 1/8
-        self.up_8_4 = UpsampleBlock(256, 256, 256) # 1/8 -> 1/4
+        self.compress = ResBlock(128, 64)
+        self.up_16_8 = UpsampleBlock(48, 64, 32) # 1/16 -> 1/8
+        self.up_8_4 = UpsampleBlock(24, 32, 32) # 1/8 -> 1/4
 
-        self.pred = nn.Conv2d(256, 1, kernel_size=(3,3), padding=(1,1), stride=1)
+        self.pred = nn.Conv2d(32, 1, kernel_size=(3,3), padding=(1,1), stride=1)
 
     def forward(self, f16, f8, f4):
         x = self.compress(f16)
@@ -25,7 +25,7 @@ class Decoder(nn.Module):
         x = self.up_8_4(f4, x)
 
         x = self.pred(F.relu(x))
-        
+
         x = F.interpolate(x, scale_factor=4, mode='bilinear', align_corners=False)
         return x
 
@@ -71,6 +71,7 @@ def softmax_w_g_top(x, top=None, gauss=None):
 
     return output
 
+
 class EvalMemoryReader(nn.Module):
     def __init__(self, top_k, km):
         super().__init__()
@@ -108,7 +109,7 @@ class EvalMemoryReader(nn.Module):
     def readout(self, affinity, mv):
         B, CV, T, H, W = mv.shape
 
-        mo = mv.view(B, CV, T*H*W) 
+        mo = mv.view(B, CV, T*H*W)
         mem = torch.bmm(mo, affinity) # Weighted-sum B, CV, HW
         mem = mem.view(B, CV, H, W)
 
@@ -118,8 +119,8 @@ class AttentionMemory(nn.Module):
     def __init__(self, k):
         super().__init__()
         self.k = k
- 
-    def forward(self, mk, qk): 
+
+    def forward(self, mk, qk):
         """
         T=1 only. Only needs to obtain W
         """
@@ -137,20 +138,21 @@ class AttentionMemory(nn.Module):
 
         return affinity
 
+
 class PropagationNetwork(nn.Module):
     def __init__(self, top_k=20):
         super().__init__()
-        self.value_encoder = ValueEncoder() 
-        self.key_encoder = KeyEncoder() 
+        self.value_encoder = ValueEncoder()
+        self.key_encoder = KeyEncoder()
 
-        self.key_proj = KeyProjection(1024, keydim=64)
-        self.key_comp = nn.Conv2d(1024, 512, kernel_size=3, padding=1)
+        self.key_proj = KeyProjection(120, keydim=32)
+        self.key_comp = nn.Conv2d(120, 64, kernel_size=3, padding=1)
 
         self.memory = EvalMemoryReader(top_k, km=None)
         self.attn_memory = AttentionMemory(top_k)
         self.decoder = Decoder()
 
-    def encode_value(self, frame, kf16, masks): 
+    def encode_value(self, frame, kf16, masks):
         k, _, h, w = masks.shape
 
         # Extract memory key/value for a frame with multiple masks
@@ -169,14 +171,14 @@ class PropagationNetwork(nn.Module):
         f16 = self.value_encoder(frame, kf16, masks, others)
         return f16.unsqueeze(2) # B*512*T*H*W
 
-    def encode_key(self, frame): 
+    def encode_key(self, frame):
         f16, f8, f4 = self.key_encoder(frame)
         k16 = self.key_proj(f16)
         f16_thin = self.key_comp(f16)
 
         return k16, f16_thin, f16, f8, f4
 
-    def segment_with_query(self, mk16, mv16, qf8, qf4, qk16, qv16): 
+    def segment_with_query(self, mk16, mv16, qf8, qf4, qk16, qv16):
         affinity = self.memory.get_affinity(mk16, qk16)
 
         k = mv16.shape[0]

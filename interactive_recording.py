@@ -8,15 +8,12 @@ It is terribly long... GUI code is hard to write!
 import cv2
 import functools
 import numpy as np
-import os
-import pickle as pkl
+import time
 import torch
 import sys
 
 from argparse import ArgumentParser
 from collections import deque
-from os import path
-from PIL import Image
 
 from PyQt5.QtWidgets import (
     QWidget,
@@ -52,14 +49,45 @@ from model.s2m.s2m_network import deeplabv3plus_mobilenet as S2M
 from util.tensor_util import unpad_3dim
 from util.palette import pal_color_map
 
+from masks_manipulation.relevant_points import extract_centers
+
 from interact.interactive_utils import *
 from interact.interaction import *
 from interact.timer import Timer
+
+import matplotlib
+matplotlib.use('Qt5Agg')
+
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 
 torch.set_grad_enabled(False)
 
 # DAVIS palette
 palette = pal_color_map()
+
+
+class FingerMovementsCanvas(FigureCanvasQTAgg):
+    def __init__(self, parent=None, width=5, height=4, dpi=300):
+        fig = matplotlib.figure.Figure(figsize=(width, height), dpi=dpi)
+        self.axes = fig.subplots(nrows=1, ncols=2,
+                                 gridspec_kw={'width_ratios': [3, 1]})
+        super().__init__(fig)
+
+    def fill(self, finger_centers):
+        for i, finger in enumerate(finger_centers):
+            self.axes[0].plot(-finger[:, 0])
+            self.axes[1].plot(finger[:, 1], range(len(finger)))
+
+        self.axes[0].set_title(f"Fingers' vertical movement", fontsize=10, loc="center")
+
+        self.axes[1].set_ylim([0, len(finger)])
+        self.axes[1].invert_yaxis()
+        self.axes[1].set_title(f"Fingers' horizontal movement",
+                               fontsize=10, loc="center")
+
+        labels = ["Right finger", "Left finger"]
+        self.axes[0].legend(labels=labels, bbox_to_anchor=(1.2, 0.6))
+        self.axes[1].legend(labels=labels, bbox_to_anchor=(1.2, 0.6))
 
 
 class VideoCapturer(QThread):
@@ -73,6 +101,32 @@ class VideoCapturer(QThread):
     def run(self):
         self.disableGUI.emit(True)
         self.cap = cv2.VideoCapture(0)
+
+        start_time = time.time()
+        curr_time = time.time()
+
+        curr_diff = curr_time - start_time
+
+        while curr_diff < 3:
+            ret, self.frame = self.cap.read()
+            if ret:
+                self.frame = cv2.flip(self.frame, 1)
+                rgbimage = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
+                rgbimage = cv2.resize(rgbimage, (711, 400))
+                # Draw a big number in the center for the first frames
+                font = cv2.FONT_HERSHEY_DUPLEX
+                text = str(3 - np.floor(curr_diff).astype(int))
+                # get boundary of this text
+                textsize = cv2.getTextSize(text, font, 6, 15)[0]
+                # get coords based on boundary
+                textX = (rgbimage.shape[1] - textsize[0]) // 2
+                textY = (rgbimage.shape[0] + textsize[1]) // 2
+                # add text centered on image
+                cv2.putText(rgbimage, text, (textX, textY),
+                            font, 6, (255, 255, 255), 15)
+                self.changePixmap.emit(rgbimage, -1)
+                curr_time = time.time()
+                curr_diff = curr_time - start_time
 
         for i in range(self.n_frames):
             ret, self.frame = self.cap.read()
@@ -128,20 +182,22 @@ class App(QWidget):
         self.run_button = QPushButton("Propagate")
         self.run_button.clicked.connect(self.on_run)
 
+        self.compute_button = QPushButton("Get results!")
+        self.compute_button.clicked.connect(self.on_compute)
+
         self.undo_button = QPushButton("Undo")
         self.undo_button.clicked.connect(self.on_undo)
 
         # LCD
         self.lcd = QTextEdit()
         self.lcd.setReadOnly(True)
-        self.lcd.setMaximumHeight(28)
-        self.lcd.setMaximumWidth(120)
+        self.lcd.setMaximumHeight(50)
+        self.lcd.setMinimumHeight(40)
+        self.lcd.setMaximumWidth(150)
+        self.lcd.setMinimumWidth(120)
         self.lcd.setText("{: 4d} / {: 4d}".format(0, self.num_frames - 1))
 
-        # brush size slider
-        self.brush_label = QLabel()
-        self.brush_label.setAlignment(Qt.AlignCenter)
-        self.brush_label.setMinimumWidth(100)
+        # brush size
         self.brush_size = 3
 
         # Radio buttons for type of interactions
@@ -164,6 +220,9 @@ class App(QWidget):
         self.console.setMinimumHeight(100)
         self.console.setMaximumHeight(100)
 
+        # Finger movement graph canvas
+        self.finger_movements_canvas = FingerMovementsCanvas(self)
+
         # progress bar
         self.progress = QProgressBar(self)
         self.progress.setGeometry(0, 0, 300, 25)
@@ -179,13 +238,13 @@ class App(QWidget):
         navi.addWidget(self.lcd)
         navi.addWidget(self.record_button)
         navi.addWidget(self.play_button)
+        navi.addWidget(self.compute_button)
 
         interact_subbox = QVBoxLayout()
         interact_topbox = QHBoxLayout()
         interact_botbox = QHBoxLayout()
         interact_topbox.setAlignment(Qt.AlignCenter)
 
-        interact_topbox.addWidget(self.brush_label)
         interact_subbox.addLayout(interact_topbox)
         interact_subbox.addLayout(interact_botbox)
         navi.addLayout(interact_subbox)
@@ -205,6 +264,8 @@ class App(QWidget):
         # Minimap area
         minimap_area = QVBoxLayout()
         minimap_area.setAlignment(Qt.AlignTop)
+        minimap_area.addWidget(self.finger_movements_canvas)
+
         # Minimap zooming
         minimap_area.addWidget(QLabel("Overall procedure: "))
         minimap_area.addWidget(
@@ -335,7 +396,9 @@ class App(QWidget):
 
     def set_image(self, image, frame_id):
         self.viz = image
-        self.images[frame_id] = image
+        if frame_id >= 0:
+            self.images[frame_id] = image
+
         self.update_interact_vis()
 
     def console_push_text(self, text):
@@ -458,7 +521,6 @@ class App(QWidget):
             return
 
         self.console_push_text("Propagation started.")
-        # self.interacted_mask = torch.softmax(self.interacted_mask*1000, dim=0)
         self.current_mask = self.processor.interact(
             self.interacted_mask,
             self.cursur,
@@ -473,6 +535,12 @@ class App(QWidget):
         self.progress.setValue(0)
         self.console_push_text("Propagation finished!")
         self.user_timer.start()
+
+    def on_compute(self):
+        finger_centers = extract_centers(
+            self.current_mask, normalize=True, move_to_origin=True)
+        self.finger_movements_canvas.fill(finger_centers)
+        self.finger_movements_canvas.draw()
 
     def on_prev(self):
         # self.tl_slide will trigger on setValue
@@ -492,7 +560,7 @@ class App(QWidget):
         if self.timer.isActive():
             self.timer.stop()
         else:
-            self.timer.start(1000 / 30)
+            self.timer.start(1000 // 40)
 
     def on_undo(self):
         if self.interaction is None:

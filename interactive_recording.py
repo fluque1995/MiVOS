@@ -41,6 +41,8 @@ from PyQt5.QtGui import QPixmap, QKeySequence, QImage, QTextCursor
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 from PyQt5 import QtCore
 
+from qt_material import apply_stylesheet
+
 from inference_core import InferenceCore
 from interact.s2m_controller import S2MController
 from interact.fbrs_controller import FBRSController
@@ -737,4 +739,5 @@ if __name__ == "__main__":
             args.mem_freq,
             args.mem_profile,
         )
+        apply_stylesheet(app, theme='dark_lightgreen.xml')
         sys.exit(app.exec_())

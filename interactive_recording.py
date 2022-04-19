@@ -93,7 +93,6 @@ class App(QWidget):
             fbrs_ctrl: FBRSController,
             starting_image,
             vid_len,
-            masks,
             num_objects,
             mem_freq,
             mem_profile):
@@ -103,7 +102,6 @@ class App(QWidget):
         self.starting_image = starting_image
         self.num_frames = vid_len
         self.images = np.empty((self.num_frames, 400, 711, 3))
-        self.masks = masks
         self.num_objects = num_objects
         self.prop_net = prop_net
         self.fuse_net = fuse_net
@@ -113,11 +111,6 @@ class App(QWidget):
         self.mem_profile = mem_profile
 
         self.height, self.width = self.starting_image.shape[:2]
-
-        # IOU computation
-        if self.masks is not None:
-            self.ious = np.zeros(self.num_frames)
-            self.iou_curve = []
 
         # set window
         self.setWindowTitle("MiVOS")
@@ -243,46 +236,8 @@ class App(QWidget):
         self.timer.setSingleShot(False)
         self.timer.timeout.connect(self.on_time)
 
-        # Local mode related states
-        self.ctrl_key = False
-        self.in_local_mode = False
-        self.local_bb = None
-        self.local_interactions = {}
-        self.this_local_interactions = []
-        self.local_interaction = None
-
-        # initialize visualization
-        self.viz_mode = "davis"
-        self.current_mask = np.zeros(
-            (self.num_frames, self.height, self.width), dtype=np.uint8
-        )
-        self.vis_map = np.zeros((self.height, self.width, 3), dtype=np.uint8)
-        self.vis_alpha = np.zeros((self.height, self.width, 1), dtype=np.float32)
-        self.brush_vis_map = np.zeros((self.height, self.width, 3), dtype=np.uint8)
-        self.brush_vis_alpha = np.zeros((self.height, self.width, 1), dtype=np.float32)
-        self.vis_hist = deque(maxlen=100)
-        self.cursur = 0
-        self.on_showing = None
-
-        # initialize local visualization (which is mostly unknown at this point)
-        self.local_vis_map = None
-        self.local_vis_alpha = None
-        self.local_brush_vis_map = None
-        self.local_brush_vis_alpha = None
-        self.local_vis_hist = deque(maxlen=100)
-
-        # initialize action
-        self.interactions = {}
-        self.interactions["interact"] = [[] for _ in range(self.num_frames)]
-        self.interactions["annotated_frame"] = []
-        self.this_frame_interactions = []
-        self.interaction = None
-        self.reset_this_interaction()
-        self.pressed = False
-        self.right_click = False
-        self.ctrl_size = False
-        self.current_object = 1
-        self.last_ex = self.last_ey = 0
+        # Initialize class variables
+        self.reset_initial_state()
 
         # Objects shortcuts
         for i in range(1, num_objects + 1):
@@ -326,6 +281,31 @@ class App(QWidget):
         self.main_canvas_size = self.main_canvas.size()
         self.image_size = qImg.size()
 
+    def reset_initial_state(self):
+        self.current_mask = np.zeros(
+            (self.num_frames, self.height, self.width), dtype=np.uint8
+        )
+        self.vis_map = np.zeros((self.height, self.width, 3), dtype=np.uint8)
+        self.vis_alpha = np.zeros((self.height, self.width, 1), dtype=np.float32)
+        self.brush_vis_map = np.zeros((self.height, self.width, 3), dtype=np.uint8)
+        self.brush_vis_alpha = np.zeros((self.height, self.width, 1), dtype=np.float32)
+        self.vis_hist = deque(maxlen=100)
+        self.cursur = 0
+        self.on_showing = None
+
+        # initialize action
+        self.interactions = {}
+        self.interactions["interact"] = [[] for _ in range(self.num_frames)]
+        self.interactions["annotated_frame"] = []
+        self.this_frame_interactions = []
+        self.interaction = None
+        self.reset_this_interaction()
+        self.pressed = False
+        self.right_click = False
+        self.ctrl_size = False
+        self.current_object = 1
+        self.last_ex = self.last_ey = 0
+
     def on_record(self):
         self.recorder = VideoCapturer(self.num_frames)
         self.recorder.changePixmap.connect(self.set_image)
@@ -338,6 +318,8 @@ class App(QWidget):
         self.run_button.setEnabled(not disable_gui)
         self.main_canvas.setMouseTracking(not disable_gui)
         if not disable_gui:
+            self.reset_initial_state()
+            self.clear_visualization()
             self.show_current_frame()
             self.processor = InferenceCore(
                 self.prop_net,
@@ -365,46 +347,19 @@ class App(QWidget):
         print(text)
 
     def compose_current_im(self):
-        if self.in_local_mode:
-            if self.viz_mode == "fade":
-                self.viz = overlay_davis_fade(self.local_np_im, self.local_np_mask)
-            elif self.viz_mode == "davis":
-                self.viz = overlay_davis(self.local_np_im, self.local_np_mask)
-            elif self.viz_mode == "light":
-                self.viz = overlay_davis(self.local_np_im, self.local_np_mask, 0.9)
-            else:
-                raise NotImplementedError
-        else:
-            if self.viz_mode == "fade":
-                self.viz = overlay_davis_fade(
-                    self.images[self.cursur], self.current_mask[self.cursur]
-                )
-            elif self.viz_mode == "davis":
-                self.viz = overlay_davis(
-                    self.images[self.cursur], self.current_mask[self.cursur]
-                )
-            elif self.viz_mode == "light":
-                self.viz = overlay_davis(
-                    self.images[self.cursur], self.current_mask[self.cursur], 0.9
-                )
-            else:
-                raise NotImplementedError
+        self.viz = overlay_davis(
+            self.images[self.cursur], self.current_mask[self.cursur]
+        )
 
     def update_interact_vis(self):
         # Update the interactions without re-computing the overlay
         height, width, channel = self.viz.shape
         bytesPerLine = 3 * width
 
-        if self.in_local_mode:
-            vis_map = self.local_vis_map
-            vis_alpha = self.local_vis_alpha
-            brush_vis_map = self.local_brush_vis_map
-            brush_vis_alpha = self.local_brush_vis_alpha
-        else:
-            vis_map = self.vis_map
-            vis_alpha = self.vis_alpha
-            brush_vis_map = self.brush_vis_map
-            brush_vis_alpha = self.brush_vis_alpha
+        vis_map = self.vis_map
+        vis_alpha = self.vis_alpha
+        brush_vis_map = self.brush_vis_map
+        brush_vis_alpha = self.brush_vis_alpha
 
         self.viz_with_stroke = self.viz * (1 - vis_alpha) + vis_map * vis_alpha
         self.viz_with_stroke = (
@@ -451,41 +406,23 @@ class App(QWidget):
         x -= (fw - ow) / 2
         y -= (fh - oh) / 2
 
-        if self.in_local_mode:
-            x = max(0, min(self.local_width - 1, x))
-            y = max(0, min(self.local_height - 1, y))
-        else:
-            x = max(0, min(self.width - 1, x))
-            y = max(0, min(self.height - 1, y))
+        x = max(0, min(self.width - 1, x))
+        y = max(0, min(self.height - 1, y))
 
         # return int(round(x)), int(round(y))
         return x, y
 
     def clear_visualization(self):
-        if self.in_local_mode:
-            self.local_vis_map.fill(0)
-            self.local_vis_alpha.fill(0)
-            self.local_vis_hist.clear()
-            self.local_vis_hist.append(
-                (self.local_vis_map.copy(), self.local_vis_alpha.copy())
-            )
-        else:
-            self.vis_map.fill(0)
-            self.vis_alpha.fill(0)
-            self.vis_hist.clear()
-            self.vis_hist.append((self.vis_map.copy(), self.vis_alpha.copy()))
+        self.vis_map.fill(0)
+        self.vis_alpha.fill(0)
+        self.vis_hist.clear()
+        self.vis_hist.append((self.vis_map.copy(), self.vis_alpha.copy()))
 
     def reset_this_interaction(self):
         self.complete_interaction()
         self.clear_visualization()
-        if self.in_local_mode:
-            self.local_interaction = None
-            self.local_interactions["interact"] = self.local_interactions["interact"][
-                :1
-            ]
-        else:
-            self.interaction = None
-            self.this_frame_interactions = []
+        self.interaction = None
+        self.this_frame_interactions = []
         self.undo_button.setDisabled(True)
         if self.fbrs_controller is not None:
             self.fbrs_controller.unanchor()
@@ -556,55 +493,27 @@ class App(QWidget):
             self.timer.start(1000 / 30)
 
     def on_undo(self):
-        if self.in_local_mode:
-            if self.local_interaction is None:
-                if len(self.local_interactions["interact"]) > 1:
-                    self.local_interactions["interact"] = self.local_interactions[
-                        "interact"
-                    ][:-1]
-                else:
-                    self.reset_this_interaction()
-                self.local_interacted_mask = self.local_interactions["interact"][
-                    -1
-                ].predict()
+        if self.interaction is None:
+            if len(self.this_frame_interactions) > 1:
+                self.this_frame_interactions = self.this_frame_interactions[:-1]
+                self.interacted_mask = self.this_frame_interactions[-1].predict()
             else:
-                if self.local_interaction.can_undo():
-                    self.local_interacted_mask = self.local_interaction.undo()
-                else:
-                    if len(self.local_interactions["interact"]) > 1:
-                        self.local_interaction = None
-                    else:
-                        self.reset_this_interaction()
-                    self.local_interacted_mask = self.local_interactions["interact"][
+                self.reset_this_interaction()
+                self.interacted_mask = self.processor.prob[:, self.cursur].clone()
+        else:
+            if self.interaction.can_undo():
+                self.interacted_mask = self.interaction.undo()
+            else:
+                if len(self.this_frame_interactions) > 0:
+                    self.interaction = None
+                    self.interacted_mask = self.this_frame_interactions[
                         -1
                     ].predict()
-
-            # Update visualization
-            if len(self.local_vis_hist) > 0:
-                # Might be empty if we are undoing the entire interaction
-                self.local_vis_map, self.local_vis_alpha = self.local_vis_hist.pop()
-        else:
-            if self.interaction is None:
-                if len(self.this_frame_interactions) > 1:
-                    self.this_frame_interactions = self.this_frame_interactions[:-1]
-                    self.interacted_mask = self.this_frame_interactions[-1].predict()
                 else:
                     self.reset_this_interaction()
-                    self.interacted_mask = self.processor.prob[:, self.cursur].clone()
-            else:
-                if self.interaction.can_undo():
-                    self.interacted_mask = self.interaction.undo()
-                else:
-                    if len(self.this_frame_interactions) > 0:
-                        self.interaction = None
-                        self.interacted_mask = self.this_frame_interactions[
-                            -1
-                        ].predict()
-                    else:
-                        self.reset_this_interaction()
-                        self.interacted_mask = self.processor.prob[
-                            :, self.cursur
-                        ].clone()
+                    self.interacted_mask = self.processor.prob[
+                        :, self.cursur
+                    ].clone()
 
             # Update visualization
             if len(self.vis_hist) > 0:
@@ -634,107 +543,22 @@ class App(QWidget):
     def clear_brush(self):
         self.brush_vis_map.fill(0)
         self.brush_vis_alpha.fill(0)
-        if self.local_brush_vis_map is not None:
-            self.local_brush_vis_map.fill(0)
-            self.local_brush_vis_alpha.fill(0)
 
     def vis_brush(self, ex, ey):
-        if self.ctrl_key:
-            # Visualize the control region
-            lx = int(round(min(self.local_start[0], ex)))
-            ux = int(round(max(self.local_start[0], ex)))
-            ly = int(round(min(self.local_start[1], ey)))
-            uy = int(round(max(self.local_start[1], ey)))
-            self.brush_vis_map = cv2.rectangle(
-                self.brush_vis_map, (lx, ly), (ux, uy), (128, 255, 128), thickness=-1
-            )
-            self.brush_vis_alpha = cv2.rectangle(
-                self.brush_vis_alpha, (lx, ly), (ux, uy), 0.5, thickness=-1
-            )
-        else:
-            # Visualize the brush (yeah I know)
-            if self.in_local_mode:
-                self.local_brush_vis_map = cv2.circle(
-                    self.local_brush_vis_map,
-                    (int(round(ex)), int(round(ey))),
-                    self.brush_size // 2 + 1,
-                    color_map[self.current_object],
-                    thickness=-1,
-                )
-                self.local_brush_vis_alpha = cv2.circle(
-                    self.local_brush_vis_alpha,
-                    (int(round(ex)), int(round(ey))),
-                    self.brush_size // 2 + 1,
-                    0.5,
-                    thickness=-1,
-                )
-            else:
-                self.brush_vis_map = cv2.circle(
-                    self.brush_vis_map,
-                    (int(round(ex)), int(round(ey))),
-                    self.brush_size // 2 + 1,
-                    color_map[self.current_object],
-                    thickness=-1,
-                )
-                self.brush_vis_alpha = cv2.circle(
-                    self.brush_vis_alpha,
-                    (int(round(ex)), int(round(ey))),
-                    self.brush_size // 2 + 1,
-                    0.5,
-                    thickness=-1,
-                )
-
-    def enter_local_control(self):
-        self.in_local_mode = True
-        lx = int(round(min(self.local_start[0], self.local_end[0])))
-        ux = int(round(max(self.local_start[0], self.local_end[0])))
-        ly = int(round(min(self.local_start[1], self.local_end[1])))
-        uy = int(round(max(self.local_start[1], self.local_end[1])))
-
-        # Reset variables
-        self.local_bb = (lx, ux, ly, uy)
-        self.local_interactions = {}
-        self.local_interactions["interact"] = []
-        self.local_interaction = None
-
-        # Initial info
-        if len(self.this_local_interactions) == 0:
-            prev_soft_mask = self.processor.prob[1:, self.cursur]
-        else:
-            prev_soft_mask = self.this_local_interactions[-1].out_prob
-        self.local_interactions["bounding_box"] = self.local_bb
-        self.local_interactions["cursur"] = self.cursur
-        init_interaction = CropperInteraction(
-            self.processor.images[:, self.cursur],
-            prev_soft_mask,
-            self.processor.pad,
-            self.local_bb,
+        self.brush_vis_map = cv2.circle(
+            self.brush_vis_map,
+            (int(round(ex)), int(round(ey))),
+            self.brush_size // 2 + 1,
+            color_map[self.current_object],
+            thickness=-1,
         )
-        self.local_interactions["interact"].append(init_interaction)
-
-        self.local_interacted_mask = init_interaction.out_mask
-        self.local_torch_im = init_interaction.im_crop
-        self.local_np_im = self.images[self.cursur][ly : uy + 1, lx : ux + 1, :]
-        self.local_pad = init_interaction.pad
-
-        # initialize the local visualization maps
-        h, w = init_interaction.h, init_interaction.w
-        self.local_vis_map = np.zeros((h, w, 3), dtype=np.uint8)
-        self.local_vis_alpha = np.zeros((h, w, 1), dtype=np.float32)
-        self.local_brush_vis_map = np.zeros((h, w, 3), dtype=np.uint8)
-        self.local_brush_vis_alpha = np.zeros((h, w, 1), dtype=np.float32)
-        self.local_vis_hist = deque(maxlen=100)
-        self.local_height, self.local_width = h, w
-
-        # Refresh self.viz
-        self.minimap_in_local_drawn = False
-        self.minimap_in_local = self.viz_with_stroke
-        self.update_interacted_mask()
-        self.finish_local_button.setEnabled(True)
-        self.undo_button.setEnabled(False)
-        self.set_navi_enable(False)
-
-        self.console_push_text("Entered local control.")
+        self.brush_vis_alpha = cv2.circle(
+            self.brush_vis_alpha,
+            (int(round(ex)), int(round(ey))),
+            self.brush_size // 2 + 1,
+            0.5,
+            thickness=-1,
+        )
 
     def on_press(self, event):
         if self.waiting_to_start:
@@ -745,114 +569,46 @@ class App(QWidget):
 
         self.user_timer.pause()
         ex, ey = self.get_scaled_pos(event.x(), event.y())
-        # Check for ctrl key
-        modifiers = QApplication.keyboardModifiers()
-        if not self.in_local_mode and modifiers == QtCore.Qt.ControlModifier:
-            # Start specifying the local mode
-            self.ctrl_key = True
-        else:
-            self.ctrl_key = False
 
         self.pressed = True
         self.right_click = event.button() != 1
         # Push last vis map into history
-        if self.in_local_mode:
-            self.local_vis_hist.append(
-                (self.local_vis_map.copy(), self.local_vis_alpha.copy())
-            )
-        else:
-            self.vis_hist.append((self.vis_map.copy(), self.vis_alpha.copy()))
-        if self.ctrl_key:
-            # Wrap up the last interaction
-            self.complete_interaction()
-            # Labeling a local control field
-            self.local_start = ex, ey
-        else:
-            # Ordinary interaction (might be in local mode)
-            if self.in_local_mode:
-                if self.local_interaction is None:
-                    prev_soft_mask = self.local_interactions["interact"][-1].out_prob
-                else:
-                    prev_soft_mask = self.local_interaction.out_prob
-                prev_hard_mask = self.local_max_mask
-                image = self.local_torch_im
-                h, w = self.local_height, self.local_width
+
+        self.vis_hist.append((self.vis_map.copy(), self.vis_alpha.copy()))
+
+        if self.interaction is None:
+            if len(self.this_frame_interactions) > 0:
+                prev_soft_mask = self.this_frame_interactions[-1].out_prob
             else:
-                if self.interaction is None:
-                    if len(self.this_frame_interactions) > 0:
-                        prev_soft_mask = self.this_frame_interactions[-1].out_prob
-                    else:
-                        prev_soft_mask = self.processor.prob[1:, self.cursur]
-                else:
-                    # Not used if the previous interaction is still valid
-                    # Don't worry about stacking effects here
-                    prev_soft_mask = self.interaction.out_prob
-                prev_hard_mask = self.processor.masks[self.cursur]
-                image = self.processor.images[:, self.cursur]
-                h, w = self.height, self.width
+                prev_soft_mask = self.processor.prob[1:, self.cursur]
+        else:
+            # Not used if the previous interaction is still valid
+            # Don't worry about stacking effects here
+            prev_soft_mask = self.interaction.out_prob
+        prev_hard_mask = self.processor.masks[self.cursur]
+        image = self.processor.images[:, self.cursur]
+        h, w = self.height, self.width
 
-            last_interaction = (
-                self.local_interaction if self.in_local_mode else self.interaction
+        last_interaction =  self.interaction
+        new_interaction = None
+        if (
+                last_interaction is None
+                or type(last_interaction) != ClickInteraction
+                or last_interaction.tar_obj != self.current_object
+        ):
+            self.complete_interaction()
+            self.fbrs_controller.unanchor()
+            new_interaction = ClickInteraction(
+                image,
+                prev_soft_mask,
+                (h, w),
+                self.fbrs_controller,
+                self.current_object,
+                self.processor.pad,
             )
-            new_interaction = None
-            if self.curr_interaction == "Scribble":
-                if (
-                    last_interaction is None
-                    or type(last_interaction) != ScribbleInteraction
-                ):
-                    self.complete_interaction()
-                    new_interaction = ScribbleInteraction(
-                        image,
-                        prev_hard_mask,
-                        (h, w),
-                        self.s2m_controller,
-                        self.num_objects,
-                    )
-            elif self.curr_interaction == "Free":
-                if (
-                    last_interaction is None
-                    or type(last_interaction) != FreeInteraction
-                ):
-                    self.complete_interaction()
-                    if self.in_local_mode:
-                        new_interaction = FreeInteraction(
-                            image,
-                            prev_soft_mask,
-                            (h, w),
-                            self.num_objects,
-                            self.local_pad,
-                        )
-                    else:
-                        new_interaction = FreeInteraction(
-                            image,
-                            prev_soft_mask,
-                            (h, w),
-                            self.num_objects,
-                            self.processor.pad,
-                        )
-                    new_interaction.set_size(self.brush_size)
-            elif self.curr_interaction == "Click":
-                if (
-                    last_interaction is None
-                    or type(last_interaction) != ClickInteraction
-                    or last_interaction.tar_obj != self.current_object
-                ):
-                    self.complete_interaction()
-                    self.fbrs_controller.unanchor()
-                    new_interaction = ClickInteraction(
-                        image,
-                        prev_soft_mask,
-                        (h, w),
-                        self.fbrs_controller,
-                        self.current_object,
-                        self.processor.pad,
-                    )
 
-            if new_interaction is not None:
-                if self.in_local_mode:
-                    self.local_interaction = new_interaction
-                else:
-                    self.interaction = new_interaction
+        if new_interaction is not None:
+            self.interaction = new_interaction
 
         # Just motion it as the first step
         self.on_motion(event)
@@ -864,97 +620,38 @@ class App(QWidget):
         self.clear_brush()
         # Visualize
         self.vis_brush(ex, ey)
-        if self.pressed:
-            if not self.ctrl_key:
-                if (
-                    self.curr_interaction == "Scribble"
-                    or self.curr_interaction == "Free"
-                ):
-                    obj = 0 if self.right_click else self.current_object
-                    # Actually draw it if dragging
-                    if self.in_local_mode:
-                        (
-                            self.local_vis_map,
-                            self.local_vis_alpha,
-                        ) = self.local_interaction.push_point(
-                            ex, ey, obj, (self.local_vis_map, self.local_vis_alpha)
-                        )
-                    else:
-                        self.vis_map, self.vis_alpha = self.interaction.push_point(
-                            ex, ey, obj, (self.vis_map, self.vis_alpha)
-                        )
         self.update_interact_vis()
 
     def update_interacted_mask(self):
-        if self.in_local_mode:
-            self.local_max_mask = torch.argmax(self.local_interacted_mask, 0)
-            max_mask = unpad_3dim(self.local_max_mask, self.local_pad)
-            self.local_np_mask = (max_mask.detach().cpu().numpy()[0]).astype(np.uint8)
-        else:
-            self.processor.update_mask_only(self.interacted_mask, self.cursur)
-            self.current_mask[self.cursur] = self.processor.np_masks[self.cursur]
+        self.processor.update_mask_only(self.interacted_mask, self.cursur)
+        self.current_mask[self.cursur] = self.processor.np_masks[self.cursur]
         self.show_current_frame()
 
     def complete_interaction(self):
-        if self.in_local_mode:
-            if self.local_interaction is not None:
-                self.clear_visualization()
-                self.local_interactions["interact"].append(self.local_interaction)
-                self.local_interaction = None
-                self.undo_button.setDisabled(False)
-        else:
-            if self.interaction is not None:
-                self.clear_visualization()
-                self.interactions["annotated_frame"].append(self.cursur)
-                self.interactions["interact"][self.cursur].append(self.interaction)
-                self.this_frame_interactions.append(self.interaction)
-                self.interaction = None
-                self.undo_button.setDisabled(False)
+        if self.interaction is not None:
+            self.clear_visualization()
+            self.interactions["annotated_frame"].append(self.cursur)
+            self.interactions["interact"][self.cursur].append(self.interaction)
+            self.this_frame_interactions.append(self.interaction)
+            self.interaction = None
+            self.undo_button.setDisabled(False)
 
     def on_release(self, event):
         self.user_timer.pause()
         ex, ey = self.get_scaled_pos(event.x(), event.y())
-        if self.ctrl_key:
-            # Enter local control mode
-            self.clear_visualization()
-            self.local_end = ex, ey
-            self.enter_local_control()
-        else:
-            self.console_push_text(
-                "Interaction %s at frame %d." % (self.curr_interaction, self.cursur)
-            )
-            # Ordinary interaction (might be in local mode)
-            if self.in_local_mode:
-                interaction = self.local_interaction
-            else:
-                interaction = self.interaction
+        self.console_push_text(
+            "Interaction %s at frame %d." % (self.curr_interaction, self.cursur)
+        )
+        interaction = self.interaction
+        ex, ey = self.get_scaled_pos(event.x(), event.y())
+        self.vis_map, self.vis_alpha = interaction.push_point(
+            ex, ey, self.right_click, (self.vis_map, self.vis_alpha)
+        )
 
-            if self.curr_interaction == "Scribble" or self.curr_interaction == "Free":
-                self.on_motion(event)
-                interaction.end_path()
-                if self.curr_interaction == "Free":
-                    self.clear_visualization()
-            elif self.curr_interaction == "Click":
-                ex, ey = self.get_scaled_pos(event.x(), event.y())
-                if self.in_local_mode:
-                    self.local_vis_map, self.local_vis_alpha = interaction.push_point(
-                        ex,
-                        ey,
-                        self.right_click,
-                        (self.local_vis_map, self.local_vis_alpha),
-                    )
-                else:
-                    self.vis_map, self.vis_alpha = interaction.push_point(
-                        ex, ey, self.right_click, (self.vis_map, self.vis_alpha)
-                    )
+        self.interacted_mask = interaction.predict()
+        self.update_interacted_mask()
 
-            if self.in_local_mode:
-                self.local_interacted_mask = interaction.predict()
-            else:
-                self.interacted_mask = interaction.predict()
-            self.update_interacted_mask()
-
-        self.pressed = self.ctrl_key = self.right_click = False
+        self.pressed = self.right_click = False
         self.undo_button.setDisabled(False)
         self.user_timer.start()
 
@@ -968,18 +665,9 @@ if __name__ == "__main__":
     parser.add_argument("--s2m_model", default="saves/s2m_mobilenet.pth")
     parser.add_argument("--fbrs_model", default="saves/fbrs.pth")
     parser.add_argument(
-        "--images",
-        help="Folders containing input images. Either this or --video need to be specified.",
-    )
-    parser.add_argument(
         "--starting-image",
         help="Placeholder image to show when the program is idle.",
         default="../Mascaras/P1/Visita_1_OFF/Dedos_enfrentados/first_frame.png"
-    )
-    parser.add_argument(
-        "--video",
-        help="Video file readable by OpenCV. Either this or --images need to be specified.",
-        default="example/example.mp4",
     )
     parser.add_argument(
         "--num_objects",
@@ -994,7 +682,6 @@ if __name__ == "__main__":
         type=int,
         help="0 - Faster and more memory intensive; 2 - Slower and less memory intensive. Default: 0.",
     )
-    parser.add_argument("--masks", help="Optional, Ground truth masks", default=None)
     parser.add_argument("--no_amp", help="Turn off AMP", action="store_true")
     parser.add_argument(
         "--resolution", help="Pass -1 to use original size", default=400, type=int
@@ -1024,24 +711,6 @@ if __name__ == "__main__":
         starting_image = cv2.imread(args.starting_image)
         starting_image = cv2.cvtColor(starting_image, cv2.COLOR_BGR2RGB)
 
-        # # Loads the images/masks
-        # if args.images is not None:
-        #     images = load_images(
-        #         args.images, args.resolution if args.resolution > 0 else None
-        #     )
-        # elif args.video is not None:
-        #     images = load_video(
-        #         args.video, args.resolution if args.resolution > 0 else None
-        #     )
-        #     vid_path = "/".join(args.video.split("/")[2:]).split(".")[0]
-        # else:
-        #     raise NotImplementedError("You must specify either --images or --video!")
-
-        if args.masks is not None:
-            masks = load_masks(args.masks)
-        else:
-            masks = None
-
         # Determine the number of objects
         num_objects = args.num_objects
         if num_objects is None:
@@ -1064,7 +733,6 @@ if __name__ == "__main__":
             fbrs_controller,
             starting_image,
             100,
-            masks,
             num_objects,
             args.mem_freq,
             args.mem_profile,

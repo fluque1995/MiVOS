@@ -52,12 +52,13 @@ from interact.interactive_utils import *
 from interact.interaction import *
 
 import matplotlib
-matplotlib.use('Qt5Agg')
+
+matplotlib.use("Qt5Agg")
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 
 torch.set_grad_enabled(False)
-matplotlib.pyplot.style.use('ggplot')
+matplotlib.pyplot.style.use("ggplot")
 
 # DAVIS palette
 palette = pal_color_map()
@@ -73,25 +74,28 @@ class State(Enum):
 class FingerMovementsCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None, width=5, height=4, dpi=300):
         self.fig = matplotlib.figure.Figure(figsize=(width, height), dpi=dpi)
-        self.axes = self.fig.subplots(nrows=1, ncols=2,
-                                      gridspec_kw={'width_ratios': [3, 1]})
-        self.fig.subplots_adjust(left=0.05, bottom=0.05,
-                                 right=0.95, top=0.85,
-                                 wspace=0.1, hspace=0.1)
-        self.axes[0].tick_params(labelsize=3, direction='in',
-                                 pad=0.2, width=0.5, length=2)
-        self.axes[0].grid(True, linewidth=.5, color='#FFFFFF')
-        self.axes[1].tick_params(labelsize=3, direction='in',
-                                 pad=0.2, width=0.5, length=2)
-        self.axes[1].grid(True, linewidth=.5, color='#FFFFFF')
+        self.axes = self.fig.subplots(
+            nrows=1, ncols=2, gridspec_kw={"width_ratios": [3, 1]}
+        )
+        self.fig.subplots_adjust(
+            left=0.05, bottom=0.05, right=0.95, top=0.85, wspace=0.1, hspace=0.1
+        )
+        self.axes[0].tick_params(
+            labelsize=3, direction="in", pad=0.2, width=0.5, length=2
+        )
+        self.axes[0].grid(True, linewidth=0.5, color="#FFFFFF")
+        self.axes[1].tick_params(
+            labelsize=3, direction="in", pad=0.2, width=0.5, length=2
+        )
+        self.axes[1].grid(True, linewidth=0.5, color="#FFFFFF")
         self.axes[0].set_axis_off()
         self.axes[1].set_axis_off()
         super().__init__(self.fig)
 
     def fill(self, finger_centers, labels):
         for i, finger in enumerate(finger_centers):
-            self.axes[0].plot(-finger[:, 0], linewidth=.5)
-            self.axes[1].plot(finger[:, 1], range(len(finger)), linewidth=.5)
+            self.axes[0].plot(-finger[:, 0], linewidth=0.5)
+            self.axes[1].plot(finger[:, 1], range(len(finger)), linewidth=0.5)
 
         vert_max = np.max(np.abs(finger_centers[:, :, 0]))
         horz_max = np.max(np.abs(finger_centers[:, :, 1]))
@@ -104,11 +108,11 @@ class FingerMovementsCanvas(FigureCanvasQTAgg):
         self.axes[0].set_axis_on()
         self.axes[1].set_axis_on()
 
-        self.axes[0].set_title("Vertical", fontsize=4, loc="center", y=.93)
+        self.axes[0].set_title("Vertical", fontsize=4, loc="center", y=0.93)
 
         self.axes[1].set_ylim([0, len(finger)])
         self.axes[1].invert_yaxis()
-        self.axes[1].set_title("Horizontal", fontsize=4, loc="center", y=.93)
+        self.axes[1].set_title("Horizontal", fontsize=4, loc="center", y=0.93)
 
         self.axes[0].legend(labels=labels, fontsize=3)
 
@@ -119,7 +123,7 @@ class FingerMovementsCanvas(FigureCanvasQTAgg):
         self.axes[1].set_axis_off()
 
     def set_title(self, title):
-        self.fig.suptitle(title, fontsize=5, y=.96)
+        self.fig.suptitle(title, fontsize=5, y=0.96)
 
 
 class HeatmapCanvas(FigureCanvasQTAgg):
@@ -178,8 +182,9 @@ class VideoCapturer(QThread):
                 textX = (rgbimage.shape[1] - textsize[0]) // 2
                 textY = (rgbimage.shape[0] + textsize[1]) // 2
                 # add text centered on image
-                cv2.putText(rgbimage, text, (textX, textY),
-                            font, 6, (255, 255, 255), 15)
+                cv2.putText(
+                    rgbimage, text, (textX, textY), font, 6, (255, 255, 255), 15
+                )
                 self.changePixmap.emit(rgbimage, -1)
                 curr_time = time.time()
                 curr_diff = curr_time - start_time
@@ -200,16 +205,17 @@ class VideoCapturer(QThread):
 
 class App(QWidget):
     def __init__(
-            self,
-            prop_net,
-            fuse_net,
-            s2m_ctrl: S2MController,
-            fbrs_ctrl: FBRSController,
-            starting_image,
-            vid_len,
-            num_objects,
-            mem_freq,
-            mem_profile):
+        self,
+        prop_net,
+        fuse_net,
+        s2m_ctrl: S2MController,
+        fbrs_ctrl: FBRSController,
+        starting_image,
+        vid_len,
+        num_objects,
+        mem_freq,
+        mem_profile,
+    ):
 
         super().__init__()
 
@@ -380,18 +386,18 @@ class App(QWidget):
         self.refresh_ui_labels()
 
     def refresh_ui_labels(self):
-        self.record_button.setText(self.texts['record_button_label'])
-        self.play_button.setText(self.texts['play_button_play_label'])
-        self.run_button.setText(self.texts['run_button_label'])
-        self.undo_button.setText(self.texts['undo_button_label'])
-        self.compute_button.setText(self.texts['compute_button_label'])
-        self.reset_button.setText(self.texts['reset_button_label'])
+        self.record_button.setText(self.texts["record_button_label"])
+        self.play_button.setText(self.texts["play_button_play_label"])
+        self.run_button.setText(self.texts["run_button_label"])
+        self.undo_button.setText(self.texts["undo_button_label"])
+        self.compute_button.setText(self.texts["compute_button_label"])
+        self.reset_button.setText(self.texts["reset_button_label"])
         self.console.clear()
-        self.console_push_text(self.texts['console_language_info'])
-        self.console_push_text(self.texts['console_init_text'])
-        self.finger_movements_canvas.set_title(self.texts['movement_canvas_title'])
+        self.console_push_text(self.texts["console_language_info"])
+        self.console_push_text(self.texts["console_init_text"])
+        self.finger_movements_canvas.set_title(self.texts["movement_canvas_title"])
         self.finger_movements_canvas.draw()
-        self.heatmap_canvas.set_title(self.texts['heatmap_canvas_title'])
+        self.heatmap_canvas.set_title(self.texts["heatmap_canvas_title"])
         self.heatmap_canvas.draw()
 
     def show_starting_image(self):
@@ -575,10 +581,10 @@ class App(QWidget):
 
     def on_run(self):
         if self.interacted_mask is None:
-            self.console_push_text(self.texts['console_propagate_error'])
+            self.console_push_text(self.texts["console_propagate_error"])
             return
 
-        self.console_push_text(self.texts['console_propagate_start'])
+        self.console_push_text(self.texts["console_propagate_start"])
         self.set_navi_enable(False)
         self.current_mask = self.processor.interact(
             self.interacted_mask,
@@ -592,38 +598,56 @@ class App(QWidget):
         self.reset_this_interaction()
         self.progress.setFormat("Idle")
         self.progress.setValue(0)
-        self.console_push_text(self.texts['console_propagate_end'])
+        self.console_push_text(self.texts["console_propagate_end"])
         self.state = State.PROPAGATED
         self.refresh_enabled_buttons()
 
     def on_compute(self):
         finger_centers = extract_centers(
-            self.current_mask, normalize=True, move_to_origin=True)
+            self.current_mask, normalize=True, move_to_origin=True
+        )
         self.finger_movements_canvas.fill(
-            finger_centers, self.texts['movement_canvas_labels'])
+            finger_centers, self.texts["movement_canvas_labels"]
+        )
         self.finger_movements_canvas.draw()
         self.heatmap_canvas.fill(self.current_mask, self.images[0].astype(int))
         self.heatmap_canvas.draw()
         finger_movements = movement_index(self.current_mask)
         if finger_movements.get(1) is not None:
             self.console_push_text(
-                self.texts['console_left_object_movement'] + f" {finger_movements[1]:.4f}")
+                self.texts["console_left_object_movement"]
+                + f" {finger_movements[1]:.4f}"
+            )
             if finger_movements[1] < 1.2:
-                self.console_push_text(self.texts['console_left_object_movement_slightly'])
+                self.console_push_text(
+                    self.texts["console_left_object_movement_slightly"]
+                )
             elif finger_movements[1] < 2.5:
-                self.console_push_text(self.texts['console_left_object_movement_moderately'])
+                self.console_push_text(
+                    self.texts["console_left_object_movement_moderately"]
+                )
             else:
-                self.console_push_text(self.texts['console_left_object_movement_hardly'])
+                self.console_push_text(
+                    self.texts["console_left_object_movement_hardly"]
+                )
 
         if finger_movements.get(2) is not None:
             self.console_push_text(
-                self.texts['console_right_object_movement'] + f" {finger_movements[2]:.4f}")
+                self.texts["console_right_object_movement"]
+                + f" {finger_movements[2]:.4f}"
+            )
             if finger_movements[2] < 1.2:
-                self.console_push_text(self.texts['console_right_object_movement_slightly'])
+                self.console_push_text(
+                    self.texts["console_right_object_movement_slightly"]
+                )
             elif finger_movements[2] < 2.5:
-                self.console_push_text(self.texts['console_right_object_movement_moderately'])
+                self.console_push_text(
+                    self.texts["console_right_object_movement_moderately"]
+                )
             else:
-                self.console_push_text(self.texts['console_right_object_movement_hardly'])
+                self.console_push_text(
+                    self.texts["console_right_object_movement_hardly"]
+                )
         self.state = State.FINAL
         self.refresh_enabled_buttons()
 
@@ -640,8 +664,7 @@ class App(QWidget):
         self.heatmap_canvas.draw()
         self.lcd.setText("{: 3d} / {: 3d}".format(0, self.num_frames - 1))
         self.console.clear()
-        self.console_push_text(self.texts['console_init_text'])
-
+        self.console_push_text(self.texts["console_init_text"])
 
     def on_prev(self):
         # self.tl_slide will trigger on setValue
@@ -662,10 +685,10 @@ class App(QWidget):
     def on_play(self):
         if self.timer.isActive():
             self.timer.stop()
-            self.play_button.setText(self.texts['play_button_play_label'])
+            self.play_button.setText(self.texts["play_button_play_label"])
         else:
             self.timer.start(1000 // 40)
-            self.play_button.setText(self.texts['play_button_stop_label'])
+            self.play_button.setText(self.texts["play_button_stop_label"])
 
     def on_undo(self):
         if self.interaction is None:
@@ -681,14 +704,10 @@ class App(QWidget):
             else:
                 if len(self.this_frame_interactions) > 0:
                     self.interaction = None
-                    self.interacted_mask = self.this_frame_interactions[
-                        -1
-                    ].predict()
+                    self.interacted_mask = self.this_frame_interactions[-1].predict()
                 else:
                     self.reset_this_interaction()
-                    self.interacted_mask = self.processor.prob[
-                        :, self.cursur
-                    ].clone()
+                    self.interacted_mask = self.processor.prob[:, self.cursur].clone()
 
             # Update visualization
             if len(self.vis_hist) > 0:
@@ -711,7 +730,7 @@ class App(QWidget):
         self.current_object = number
         if self.fbrs_controller is not None:
             self.fbrs_controller.unanchor()
-        self.console_push_text(self.text['console_selected_object'] + f" {number}")
+        self.console_push_text(self.text["console_selected_object"] + f" {number}")
         self.clear_brush()
         self.vis_brush(self.last_ex, self.last_ey)
         self.update_interact_vis()
@@ -762,12 +781,12 @@ class App(QWidget):
         image = self.processor.images[:, self.cursur]
         h, w = self.height, self.width
 
-        last_interaction =  self.interaction
+        last_interaction = self.interaction
         new_interaction = None
         if (
-                last_interaction is None
-                or type(last_interaction) != ClickInteraction
-                or last_interaction.tar_obj != self.current_object
+            last_interaction is None
+            or type(last_interaction) != ClickInteraction
+            or last_interaction.tar_obj != self.current_object
         ):
             self.complete_interaction()
             self.fbrs_controller.unanchor()
@@ -810,9 +829,7 @@ class App(QWidget):
 
     def on_release(self, event):
         ex, ey = self.get_scaled_pos(event.x(), event.y())
-        self.console_push_text(
-            self.texts['console_click'] + f" {self.cursur}"
-        )
+        self.console_push_text(self.texts["console_click"] + f" {self.cursur}")
         interaction = self.interaction
         ex, ey = self.get_scaled_pos(event.x(), event.y())
         self.vis_map, self.vis_alpha = interaction.push_point(
@@ -869,12 +886,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--starting-image",
         help="Placeholder image to show when the program is idle.",
-        default="../Mascaras/P1/Visita_1_OFF/Dedos_enfrentados/first_frame.png"
+        default="../Mascaras/P1/Visita_1_OFF/Dedos_enfrentados/first_frame.png",
     )
     parser.add_argument(
         "--n_frames",
         help="Number of frames to record in each execution.",
-        type=int, default=20
+        type=int,
+        default=20,
     )
     parser.add_argument(
         "--num_objects",
@@ -945,11 +963,10 @@ if __name__ == "__main__":
             args.mem_profile,
         )
         apply_stylesheet(
-            app, theme=os.path.join('assets', 'dasci_colors.xml'),
-            invert_secondary=True
+            app, theme=os.path.join("assets", "dasci_colors.xml"), invert_secondary=True
         )
         stylesheet = app.styleSheet()
-        with open(os.path.join('assets', 'custom.css'), 'r') as f:
+        with open(os.path.join("assets", "custom.css"), "r") as f:
             app.setStyleSheet(stylesheet + f.read().format(**os.environ))
 
         sys.exit(app.exec_())

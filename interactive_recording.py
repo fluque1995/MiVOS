@@ -61,6 +61,7 @@ matplotlib.use('Qt5Agg')
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 
 torch.set_grad_enabled(False)
+matplotlib.pyplot.style.use('ggplot')
 
 # DAVIS palette
 palette = pal_color_map()
@@ -69,32 +70,78 @@ palette = pal_color_map()
 class FingerMovementsCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None, width=5, height=4, dpi=300):
         fig = matplotlib.figure.Figure(figsize=(width, height), dpi=dpi)
+        fig.suptitle("Fingers' movement", fontsize=5, y=.96)
         self.axes = fig.subplots(nrows=1, ncols=2,
                                  gridspec_kw={'width_ratios': [3, 1]})
+        fig.subplots_adjust(left=0.05, bottom=0.05,
+                            right=0.95, top=0.85,
+                            wspace=0.1, hspace=0.1)
+        self.axes[0].tick_params(labelsize=3, direction='in',
+                                 pad=0.2, width=0.5, length=2)
+        self.axes[0].grid(True, linewidth=.5, color='#FFFFFF')
+        self.axes[1].tick_params(labelsize=3, direction='in',
+                                 pad=0.2, width=0.5, length=2)
+        self.axes[1].grid(True, linewidth=.5, color='#FFFFFF')
+        self.axes[0].set_axis_off()
+        self.axes[1].set_axis_off()
         super().__init__(fig)
 
     def fill(self, finger_centers):
         for i, finger in enumerate(finger_centers):
-            self.axes[0].plot(-finger[:, 0])
-            self.axes[1].plot(finger[:, 1], range(len(finger)))
+            self.axes[0].plot(-finger[:, 0], linewidth=.5)
+            self.axes[1].plot(finger[:, 1], range(len(finger)), linewidth=.5)
 
-        self.axes[0].set_title(f"Fingers' vertical movement", fontsize=10, loc="center")
+        vert_max = np.max(np.abs(finger_centers[:, :, 0]))
+        horz_max = np.max(np.abs(finger_centers[:, :, 1]))
+
+        if vert_max < 20:
+            self.axes[0].set_ylim([-20, 20])
+        if horz_max < 10:
+            self.axes[1].set_xlim([-20, 20])
+
+        self.axes[0].set_axis_on()
+        self.axes[1].set_axis_on()
+
+        self.axes[0].set_title("Vertical", fontsize=4, loc="center", y=.93)
 
         self.axes[1].set_ylim([0, len(finger)])
         self.axes[1].invert_yaxis()
-        self.axes[1].set_title(f"Fingers' horizontal movement",
-                               fontsize=10, loc="center")
+        self.axes[1].set_title("Horizontal", fontsize=4, loc="center", y=.93)
 
         labels = ["Right finger", "Left finger"]
-        self.axes[0].legend(labels=labels, bbox_to_anchor=(1.2, 0.6))
-        self.axes[1].legend(labels=labels, bbox_to_anchor=(1.2, 0.6))
+        self.axes[0].legend(labels=labels, fontsize=3)
+
+    def clear(self):
+        self.axes[0].cla()
+        self.axes[1].cla()
+        self.axes[0].set_axis_off()
+        self.axes[1].set_axis_off()
+
+class HeatmapCanvas(FigureCanvasQTAgg):
+    def __init__(self, parent=None, width=5, height=4, dpi=300):
+        fig = matplotlib.figure.Figure(figsize=(width, height), dpi=dpi)
+        self.ax = matplotlib.axes.Axes(fig, [0.1, 0.05, 0.8, 0.8])
+        fig.add_axes(self.ax)
+        fig.suptitle("Movement heatmaps", fontsize=5, y=0.93)
+        super().__init__(fig)
+        self.ax.set_axis_off()
+
+    def fill(self, masks, first_frame):
+        masks_nonzeros = (masks != 0).astype(int)
+        heatmap = masks_nonzeros.sum(axis=0)
+        self.ax.imshow(first_frame)
+        self.ax.matshow(heatmap, alpha=0.8)
+
+    def clear(self):
+        self.ax.cla()
+        self.ax.set_axis_off()
 
 
 class VideoCapturer(QThread):
     changePixmap = pyqtSignal((np.ndarray, int))
     disableGUI = pyqtSignal(bool)
 
-    def __init__(self, n_frames=300):
+    def __init__(self, n_frames=300, ):
         super().__init__()
         self.n_frames = n_frames
 
@@ -107,7 +154,7 @@ class VideoCapturer(QThread):
 
         curr_diff = curr_time - start_time
 
-        while curr_diff < 3:
+        while curr_diff < 1:
             ret, self.frame = self.cap.read()
             if ret:
                 self.frame = cv2.flip(self.frame, 1)
@@ -220,8 +267,9 @@ class App(QWidget):
         self.console.setMinimumHeight(100)
         self.console.setMaximumHeight(100)
 
-        # Finger movement graph canvas
+        # Graph and heatmap canvases
         self.finger_movements_canvas = FingerMovementsCanvas(self)
+        self.heatmap_canvas = HeatmapCanvas(self)
 
         # progress bar
         self.progress = QProgressBar(self)
@@ -238,60 +286,34 @@ class App(QWidget):
         navi.addWidget(self.lcd)
         navi.addWidget(self.record_button)
         navi.addWidget(self.play_button)
-        navi.addWidget(self.compute_button)
-
-        interact_subbox = QVBoxLayout()
-        interact_topbox = QHBoxLayout()
-        interact_botbox = QHBoxLayout()
-        interact_topbox.setAlignment(Qt.AlignCenter)
-
-        interact_subbox.addLayout(interact_topbox)
-        interact_subbox.addLayout(interact_botbox)
-        navi.addLayout(interact_subbox)
 
         navi.addStretch(1)
+        navi.addWidget(self.run_button)
         navi.addWidget(self.undo_button)
 
         navi.addStretch(1)
         navi.addWidget(self.progress)
         navi.addStretch(1)
-        navi.addWidget(self.run_button)
+
+        navi.addWidget(self.compute_button)
 
         # Drawing area, main canvas and minimap
-        draw_area = QHBoxLayout()
-        draw_area.addWidget(self.main_canvas, 4)
+        draw_area = QVBoxLayout()
+        draw_area.addWidget(self.main_canvas)
 
-        # Minimap area
+        # Right bar
         minimap_area = QVBoxLayout()
         minimap_area.setAlignment(Qt.AlignTop)
         minimap_area.addWidget(self.finger_movements_canvas)
-
-        # Minimap zooming
-        minimap_area.addWidget(QLabel("Overall procedure: "))
-        minimap_area.addWidget(
-            QLabel("1. Label a frame (all objects) with whatever means")
-        )
-        minimap_area.addWidget(QLabel("2. Propagate"))
-        minimap_area.addWidget(
-            QLabel("3. Find a frame with error, correct it and propagate again")
-        )
-        minimap_area.addWidget(QLabel("4. Repeat"))
-        minimap_area.addWidget(QLabel("Tips: "))
-        minimap_area.addWidget(
-            QLabel("1: Use Ctrl+Left-click to drag-select a local control region.")
-        )
-        minimap_area.addWidget(QLabel("Click finish local to go back."))
-        minimap_area.addWidget(QLabel("2: Use Right-click to label background."))
-        minimap_area.addWidget(QLabel("3: Use Num-keys to change the object id. "))
-        minimap_area.addWidget(QLabel("(1-Red, 2-Green, 3-Blue, ...)"))
+        minimap_area.addWidget(self.heatmap_canvas)
 
         minimap_area.addWidget(self.console)
 
-        draw_area.addLayout(minimap_area, 1)
+        draw_area.addLayout(navi)
 
-        layout = QVBoxLayout()
-        layout.addLayout(draw_area)
-        layout.addLayout(navi)
+        layout = QHBoxLayout()
+        layout.addLayout(draw_area, 3)
+        layout.addLayout(minimap_area, 2)
         self.setLayout(layout)
 
         # timer
@@ -370,6 +392,10 @@ class App(QWidget):
         self.last_ex = self.last_ey = 0
 
     def on_record(self):
+        self.finger_movements_canvas.clear()
+        self.finger_movements_canvas.draw()
+        self.heatmap_canvas.clear()
+        self.heatmap_canvas.draw()
         self.recorder = VideoCapturer(self.num_frames)
         self.recorder.changePixmap.connect(self.set_image)
         self.recorder.disableGUI.connect(self.disable_gui_for_record)
@@ -541,6 +567,8 @@ class App(QWidget):
             self.current_mask, normalize=True, move_to_origin=True)
         self.finger_movements_canvas.fill(finger_centers)
         self.finger_movements_canvas.draw()
+        self.heatmap_canvas.fill(self.current_mask, self.images[0].astype(int))
+        self.heatmap_canvas.draw()
 
     def on_prev(self):
         # self.tl_slide will trigger on setValue
@@ -559,8 +587,10 @@ class App(QWidget):
     def on_play(self):
         if self.timer.isActive():
             self.timer.stop()
+            self.play_button.setText("Play")
         else:
             self.timer.start(1000 // 40)
+            self.play_button.setText("Stop")
 
     def on_undo(self):
         if self.interaction is None:
@@ -740,6 +770,11 @@ if __name__ == "__main__":
         default="../Mascaras/P1/Visita_1_OFF/Dedos_enfrentados/first_frame.png"
     )
     parser.add_argument(
+        "--n_frames",
+        help="Number of frames to record in each execution.",
+        type=int, default=30
+    )
+    parser.add_argument(
         "--num_objects",
         help="Default: 1 if no masks provided, masks.max() otherwise",
         default=2,
@@ -802,7 +837,7 @@ if __name__ == "__main__":
             s2m_controller,
             fbrs_controller,
             starting_image,
-            100,
+            args.n_frames,
             num_objects,
             args.mem_freq,
             args.mem_profile,

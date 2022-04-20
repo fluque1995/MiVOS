@@ -50,6 +50,7 @@ from util.tensor_util import unpad_3dim
 from util.palette import pal_color_map
 
 from masks_manipulation.relevant_points import extract_centers
+from masks_manipulation import movement_index
 
 from interact.interactive_utils import *
 from interact.interaction import *
@@ -569,6 +570,13 @@ class App(QWidget):
         self.finger_movements_canvas.draw()
         self.heatmap_canvas.fill(self.current_mask, self.images[0].astype(int))
         self.heatmap_canvas.draw()
+        finger_movements = movement_index(self.current_mask)
+        if finger_movements.get(1) is not None:
+            self.console_push_text(
+                f"Left object movement {finger_movements[1]:.4f}")
+        if finger_movements.get(2) is not None:
+            self.console_push_text(
+                f"Right object movement {finger_movements[2]:.4f}")
 
     def on_prev(self):
         # self.tl_slide will trigger on setValue

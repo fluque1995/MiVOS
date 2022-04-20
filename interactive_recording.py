@@ -71,7 +71,7 @@ palette = pal_color_map()
 class FingerMovementsCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None, width=5, height=4, dpi=300):
         fig = matplotlib.figure.Figure(figsize=(width, height), dpi=dpi)
-        fig.suptitle("Fingers' movement", fontsize=5, y=.96)
+        fig.suptitle("Objects' movement", fontsize=5, y=.96)
         self.axes = fig.subplots(nrows=1, ncols=2,
                                  gridspec_kw={'width_ratios': [3, 1]})
         fig.subplots_adjust(left=0.05, bottom=0.05,
@@ -109,7 +109,7 @@ class FingerMovementsCanvas(FigureCanvasQTAgg):
         self.axes[1].invert_yaxis()
         self.axes[1].set_title("Horizontal", fontsize=4, loc="center", y=.93)
 
-        labels = ["Right finger", "Left finger"]
+        labels = ["Left object", "Right object"]
         self.axes[0].legend(labels=labels, fontsize=3)
 
     def clear(self):

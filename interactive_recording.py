@@ -429,11 +429,6 @@ class App(QWidget):
         self.update_interact_vis()
 
     def console_push_text(self, text):
-        text = "[A: %s, U: %s]: %s" % (
-            self.algo_timer.format(),
-            self.user_timer.format(),
-            text,
-        )
         self.console.appendPlainText(text)
         self.console.moveCursor(QTextCursor.End)
         print(text)
@@ -574,9 +569,22 @@ class App(QWidget):
         if finger_movements.get(1) is not None:
             self.console_push_text(
                 f"Left object movement {finger_movements[1]:.4f}")
+            if finger_movements[1] < 1.2:
+                self.console_push_text("Left object moved slightly")
+            elif finger_movements[1] < 2.5:
+                self.console_push_text("Left object moved moderately")
+            else:
+                self.console_push_text("Left object moved a lot!")
+
         if finger_movements.get(2) is not None:
             self.console_push_text(
                 f"Right object movement {finger_movements[2]:.4f}")
+            if finger_movements[2] < 1.2:
+                self.console_push_text("Right object moved slightly")
+            elif finger_movements[2] < 2.5:
+                self.console_push_text("Right object moved moderately")
+            else:
+                self.console_push_text("Right object moved a lot!")
 
     def on_prev(self):
         # self.tl_slide will trigger on setValue

@@ -104,7 +104,8 @@ def plot_finger_heatmaps(masks_list, frames_list, subplots=(1, 1),
 
     fig, axs = plt.subplots(*subplots, squeeze=False)
     for ax, mask, frame in zip(axs.ravel(), masks_list, frames_list):
-        heatmap = mask.sum(axis=0)
+        mask_nonzero = (mask != 0).astype(int)
+        heatmap = mask_nonzero.sum(axis=0)
         ax.imshow(frame)
         ax.matshow(heatmap, alpha=0.9)
 

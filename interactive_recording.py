@@ -7,18 +7,20 @@ It is terribly long... GUI code is hard to write!
 
 import cv2
 import functools
+import json
 import numpy as np
+import os
 import time
 import torch
 import sys
 
 from argparse import ArgumentParser
 from collections import deque
+from enum import Enum
 
 from PyQt5.QtWidgets import (
     QWidget,
     QApplication,
-    QComboBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -26,17 +28,12 @@ from PyQt5.QtWidgets import (
     QPlainTextEdit,
     QVBoxLayout,
     QSizePolicy,
-    QButtonGroup,
-    QSlider,
     QShortcut,
-    QRadioButton,
     QProgressBar,
-    QFileDialog,
 )
 
 from PyQt5.QtGui import QPixmap, QKeySequence, QImage, QTextCursor
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
-from PyQt5 import QtCore
 
 from qt_material import apply_stylesheet
 
@@ -46,7 +43,6 @@ from interact.fbrs_controller import FBRSController
 from model.propagation.prop_net import PropagationNetwork
 from model.fusion_net import FusionNet
 from model.s2m.s2m_network import deeplabv3plus_mobilenet as S2M
-from util.tensor_util import unpad_3dim
 from util.palette import pal_color_map
 
 from masks_manipulation.relevant_points import extract_centers
@@ -54,7 +50,6 @@ from masks_manipulation import movement_index
 
 from interact.interactive_utils import *
 from interact.interaction import *
-from interact.timer import Timer
 
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -66,6 +61,13 @@ matplotlib.pyplot.style.use('ggplot')
 
 # DAVIS palette
 palette = pal_color_map()
+
+
+class State(Enum):
+    INITIAL = 0
+    RECORDED = 1
+    PROPAGATED = 2
+    FINAL = 3
 
 
 class FingerMovementsCanvas(FigureCanvasQTAgg):
@@ -215,25 +217,41 @@ class App(QWidget):
         self.mem_profile = mem_profile
 
         self.height, self.width = self.starting_image.shape[:2]
+        self.select_language("spanish")
 
         # set window
         self.setWindowTitle("MiVOS")
         self.setGeometry(100, 100, self.width, self.height + 100)
 
+        # Language selection buttons
+        self.spanish_button = QPushButton("Español")
+        self.spanish_button.clicked.connect(lambda: self.select_language("spanish"))
+        self.english_button = QPushButton("English")
+        self.english_button.clicked.connect(lambda: self.select_language("english"))
+
+        # Languages selector
+        languages = QHBoxLayout()
+        languages.addWidget(self.spanish_button)
+        languages.addWidget(self.english_button)
+
         # Recording button
-        self.record_button = QPushButton("Record")
+        self.record_button = QPushButton(self.texts['record_button_label'])
         self.record_button.clicked.connect(self.on_record)
 
         # Interaction with video buttons
-        self.play_button = QPushButton("Play")
+        self.play_button = QPushButton(self.texts['play_button_play_label'])
         self.play_button.clicked.connect(self.on_play)
-        self.run_button = QPushButton("Propagate")
+        self.run_button = QPushButton(self.texts['run_button_label'])
         self.run_button.clicked.connect(self.on_run)
 
-        self.compute_button = QPushButton("Get results!")
+        self.compute_button = QPushButton(self.texts['compute_button_label'])
         self.compute_button.clicked.connect(self.on_compute)
 
-        self.undo_button = QPushButton("Undo")
+        self.reset_button = QPushButton(self.texts['reset_button_label'])
+        self.reset_button.setProperty("class", "danger")
+        self.reset_button.clicked.connect(self.on_reset)
+
+        self.undo_button = QPushButton(self.texts['undo_button_label'])
         self.undo_button.clicked.connect(self.on_undo)
 
         # LCD
@@ -247,9 +265,6 @@ class App(QWidget):
 
         # brush size
         self.brush_size = 3
-
-        # Radio buttons for type of interactions
-        self.curr_interaction = "Click"
 
         # Main canvas -> QLabel
         self.main_canvas = QLabel()
@@ -287,34 +302,32 @@ class App(QWidget):
         navi.addWidget(self.lcd)
         navi.addWidget(self.record_button)
         navi.addWidget(self.play_button)
-
         navi.addStretch(1)
         navi.addWidget(self.run_button)
         navi.addWidget(self.undo_button)
-
         navi.addStretch(1)
         navi.addWidget(self.progress)
         navi.addStretch(1)
-
         navi.addWidget(self.compute_button)
+        navi.addWidget(self.reset_button)
 
-        # Drawing area, main canvas and minimap
-        draw_area = QVBoxLayout()
-        draw_area.addWidget(self.main_canvas)
+        # Language selectors, drawing area and navigation bar
+        left_column = QVBoxLayout()
+        left_column.addLayout(languages)
+        left_column.addWidget(self.main_canvas)
+        left_column.addLayout(navi)
 
         # Right bar
-        minimap_area = QVBoxLayout()
-        minimap_area.setAlignment(Qt.AlignTop)
-        minimap_area.addWidget(self.finger_movements_canvas)
-        minimap_area.addWidget(self.heatmap_canvas)
+        right_column = QVBoxLayout()
+        right_column.setAlignment(Qt.AlignTop)
+        right_column.addWidget(self.finger_movements_canvas)
+        right_column.addWidget(self.heatmap_canvas)
+        right_column.addWidget(self.console)
 
-        minimap_area.addWidget(self.console)
-
-        draw_area.addLayout(navi)
-
+        # Application layout
         layout = QHBoxLayout()
-        layout.addLayout(draw_area, 3)
-        layout.addLayout(minimap_area, 2)
+        layout.addLayout(left_column, 3)
+        layout.addLayout(right_column, 2)
         self.setLayout(layout)
 
         # timer
@@ -323,6 +336,8 @@ class App(QWidget):
         self.timer.timeout.connect(self.on_time)
 
         # Initialize class variables
+        self.state = State(0)
+        self.refresh_enabled_buttons()
         self.reset_initial_state()
 
         # Objects shortcuts
@@ -341,13 +356,14 @@ class App(QWidget):
         self.show()
 
         self.waiting_to_start = True
-        self.global_timer = Timer().start()
-        self.algo_timer = Timer()
-        self.user_timer = Timer()
-        self.console_push_text("Initialized.")
+        self.console_push_text(self.texts['console_init_text'])
 
     def resizeEvent(self, event):
         self.show_starting_image()
+
+    def select_language(self, language):
+        with open(os.path.join("assets", f"{language}_texts.json"), "r") as f:
+            self.texts = json.load(f)
 
     def show_starting_image(self):
         height, width, channel = self.starting_image.shape
@@ -401,11 +417,14 @@ class App(QWidget):
         self.recorder.changePixmap.connect(self.set_image)
         self.recorder.disableGUI.connect(self.disable_gui_for_record)
         self.recorder.start()
+        self.state = State.RECORDED
+        self.refresh_enabled_buttons()
 
     def disable_gui_for_record(self, disable_gui):
         self.play_button.setEnabled(not disable_gui)
         self.record_button.setEnabled(not disable_gui)
         self.run_button.setEnabled(not disable_gui)
+        self.reset_button.setEnabled(not disable_gui)
         self.main_canvas.setMouseTracking(not disable_gui)
         if not disable_gui:
             self.reset_initial_state()
@@ -419,7 +438,6 @@ class App(QWidget):
                 mem_freq=self.mem_freq,
                 mem_profile=self.mem_profile,
             )
-
 
     def set_image(self, image, frame_id):
         self.viz = image
@@ -514,16 +532,6 @@ class App(QWidget):
         if self.fbrs_controller is not None:
             self.fbrs_controller.unanchor()
 
-    def tl_slide(self):
-        if self.waiting_to_start:
-            self.waiting_to_start = False
-            self.algo_timer.start()
-            self.user_timer.start()
-            self.console_push_text("Timers started.")
-
-        self.reset_this_interaction()
-        self.show_current_frame()
-
     def progress_step_cb(self):
         self.progress_num += 1
         ratio = self.progress_num / self.progress_max
@@ -537,12 +545,12 @@ class App(QWidget):
         self.progress_step_cb()
 
     def on_run(self):
-        self.user_timer.pause()
         if self.interacted_mask is None:
-            self.console_push_text("Cannot propagate! No interacted mask!")
+            self.console_push_text(self.texts['console_propagate_error'])
             return
 
-        self.console_push_text("Propagation started.")
+        self.console_push_text(self.texts['console_propagate_start'])
+        self.set_navi_enable(False)
         self.current_mask = self.processor.interact(
             self.interacted_mask,
             self.cursur,
@@ -555,8 +563,9 @@ class App(QWidget):
         self.reset_this_interaction()
         self.progress.setFormat("Idle")
         self.progress.setValue(0)
-        self.console_push_text("Propagation finished!")
-        self.user_timer.start()
+        self.console_push_text(self.texts['console_propagate_end'])
+        self.state = State.PROPAGATED
+        self.refresh_enabled_buttons()
 
     def on_compute(self):
         finger_centers = extract_centers(
@@ -568,23 +577,40 @@ class App(QWidget):
         finger_movements = movement_index(self.current_mask)
         if finger_movements.get(1) is not None:
             self.console_push_text(
-                f"Left object movement {finger_movements[1]:.4f}")
+                self.texts['console_left_object_movement'] + f" {finger_movements[1]:.4f}")
             if finger_movements[1] < 1.2:
-                self.console_push_text("Left object moved slightly")
+                self.console_push_text(self.texts['console_left_object_movement_slightly'])
             elif finger_movements[1] < 2.5:
-                self.console_push_text("Left object moved moderately")
+                self.console_push_text(self.texts['console_left_object_movement_moderately'])
             else:
-                self.console_push_text("Left object moved a lot!")
+                self.console_push_text(self.texts['console_left_object_movement_hardly'])
 
         if finger_movements.get(2) is not None:
             self.console_push_text(
-                f"Right object movement {finger_movements[2]:.4f}")
+                self.texts['console_right_object_movement'] + f" {finger_movements[2]:.4f}")
             if finger_movements[2] < 1.2:
-                self.console_push_text("Right object moved slightly")
+                self.console_push_text(self.texts['console_right_object_movement_slightly'])
             elif finger_movements[2] < 2.5:
-                self.console_push_text("Right object moved moderately")
+                self.console_push_text(self.texts['console_right_object_movement_moderately'])
             else:
-                self.console_push_text("Right object moved a lot!")
+                self.console_push_text(self.texts['console_right_object_movement_hardly'])
+        self.state = State.FINAL
+        self.refresh_enabled_buttons()
+
+    def on_reset(self):
+        self.state = State.INITIAL
+        self.refresh_enabled_buttons()
+        self.reset_initial_state()
+
+        # Reset UI with default information
+        self.show_starting_image()
+        self.finger_movements_canvas.clear()
+        self.finger_movements_canvas.draw()
+        self.heatmap_canvas.clear()
+        self.heatmap_canvas.draw()
+        self.console.clear()
+        self.console_push_text(self.texts['console_init_text'])
+
 
     def on_prev(self):
         # self.tl_slide will trigger on setValue
@@ -603,10 +629,10 @@ class App(QWidget):
     def on_play(self):
         if self.timer.isActive():
             self.timer.stop()
-            self.play_button.setText("Play")
+            self.play_button.setText(self.texts['play_button_play_label'])
         else:
             self.timer.start(1000 // 40)
-            self.play_button.setText("Stop")
+            self.play_button.setText(self.texts['play_button_stop_label'])
 
     def on_undo(self):
         if self.interaction is None:
@@ -642,6 +668,9 @@ class App(QWidget):
     def set_navi_enable(self, boolean):
         self.run_button.setEnabled(boolean)
         self.play_button.setEnabled(boolean)
+        self.undo_button.setEnabled(boolean)
+        self.record_button.setEnabled(boolean)
+        self.reset_button.setEnabled(boolean)
         self.lcd.setEnabled(boolean)
 
     def hit_number_key(self, number):
@@ -650,7 +679,7 @@ class App(QWidget):
         self.current_object = number
         if self.fbrs_controller is not None:
             self.fbrs_controller.unanchor()
-        self.console_push_text("Current object changed to %d!" % number)
+        self.console_push_text(self.text['console_selected_object'] + f" {number}")
         self.clear_brush()
         self.vis_brush(self.last_ex, self.last_ey)
         self.update_interact_vis()
@@ -679,11 +708,7 @@ class App(QWidget):
     def on_press(self, event):
         if self.waiting_to_start:
             self.waiting_to_start = False
-            self.algo_timer.start()
-            self.user_timer.start()
-            self.console_push_text("Timers started.")
 
-        self.user_timer.pause()
         ex, ey = self.get_scaled_pos(event.x(), event.y())
 
         self.pressed = True
@@ -728,7 +753,6 @@ class App(QWidget):
 
         # Just motion it as the first step
         self.on_motion(event)
-        self.user_timer.start()
 
     def on_motion(self, event):
         ex, ey = self.get_scaled_pos(event.x(), event.y())
@@ -753,10 +777,9 @@ class App(QWidget):
             self.undo_button.setDisabled(False)
 
     def on_release(self, event):
-        self.user_timer.pause()
         ex, ey = self.get_scaled_pos(event.x(), event.y())
         self.console_push_text(
-            "Interaction %s at frame %d." % (self.curr_interaction, self.cursur)
+            self.texts['console_click'] + f" {self.cursur}"
         )
         interaction = self.interaction
         ex, ey = self.get_scaled_pos(event.x(), event.y())
@@ -769,7 +792,34 @@ class App(QWidget):
 
         self.pressed = self.right_click = False
         self.undo_button.setDisabled(False)
-        self.user_timer.start()
+
+    def refresh_enabled_buttons(self):
+        self.reset_button.setEnabled(True)
+        self.record_button.setEnabled(True)
+        if self.state == State.INITIAL:
+            self.play_button.setEnabled(False)
+            self.run_button.setEnabled(False)
+            self.undo_button.setEnabled(False)
+            self.compute_button.setEnabled(False)
+            self.main_canvas.setMouseTracking(False)
+        elif self.state == State.RECORDED:
+            self.play_button.setEnabled(True)
+            self.run_button.setEnabled(True)
+            self.undo_button.setEnabled(False)
+            self.compute_button.setEnabled(False)
+            self.main_canvas.setMouseTracking(True)
+        elif self.state == State.PROPAGATED:
+            self.play_button.setEnabled(True)
+            self.run_button.setEnabled(True)
+            self.undo_button.setEnabled(False)
+            self.compute_button.setEnabled(True)
+            self.main_canvas.setMouseTracking(True)
+        elif self.state == State.FINAL:
+            self.play_button.setEnabled(True)
+            self.run_button.setEnabled(False)
+            self.undo_button.setEnabled(False)
+            self.compute_button.setEnabled(False)
+            self.main_canvas.setMouseTracking(True)
 
 
 if __name__ == "__main__":

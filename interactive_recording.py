@@ -72,13 +72,12 @@ class State(Enum):
 
 class FingerMovementsCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None, width=5, height=4, dpi=300):
-        fig = matplotlib.figure.Figure(figsize=(width, height), dpi=dpi)
-        fig.suptitle("Objects' movement", fontsize=5, y=.96)
-        self.axes = fig.subplots(nrows=1, ncols=2,
-                                 gridspec_kw={'width_ratios': [3, 1]})
-        fig.subplots_adjust(left=0.05, bottom=0.05,
-                            right=0.95, top=0.85,
-                            wspace=0.1, hspace=0.1)
+        self.fig = matplotlib.figure.Figure(figsize=(width, height), dpi=dpi)
+        self.axes = self.fig.subplots(nrows=1, ncols=2,
+                                      gridspec_kw={'width_ratios': [3, 1]})
+        self.fig.subplots_adjust(left=0.05, bottom=0.05,
+                                 right=0.95, top=0.85,
+                                 wspace=0.1, hspace=0.1)
         self.axes[0].tick_params(labelsize=3, direction='in',
                                  pad=0.2, width=0.5, length=2)
         self.axes[0].grid(True, linewidth=.5, color='#FFFFFF')
@@ -87,9 +86,9 @@ class FingerMovementsCanvas(FigureCanvasQTAgg):
         self.axes[1].grid(True, linewidth=.5, color='#FFFFFF')
         self.axes[0].set_axis_off()
         self.axes[1].set_axis_off()
-        super().__init__(fig)
+        super().__init__(self.fig)
 
-    def fill(self, finger_centers):
+    def fill(self, finger_centers, labels):
         for i, finger in enumerate(finger_centers):
             self.axes[0].plot(-finger[:, 0], linewidth=.5)
             self.axes[1].plot(finger[:, 1], range(len(finger)), linewidth=.5)
@@ -111,7 +110,6 @@ class FingerMovementsCanvas(FigureCanvasQTAgg):
         self.axes[1].invert_yaxis()
         self.axes[1].set_title("Horizontal", fontsize=4, loc="center", y=.93)
 
-        labels = ["Left object", "Right object"]
         self.axes[0].legend(labels=labels, fontsize=3)
 
     def clear(self):
@@ -120,13 +118,16 @@ class FingerMovementsCanvas(FigureCanvasQTAgg):
         self.axes[0].set_axis_off()
         self.axes[1].set_axis_off()
 
+    def set_title(self, title):
+        self.fig.suptitle(title, fontsize=5, y=.96)
+
+
 class HeatmapCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None, width=5, height=4, dpi=300):
-        fig = matplotlib.figure.Figure(figsize=(width, height), dpi=dpi)
-        self.ax = matplotlib.axes.Axes(fig, [0.1, 0.05, 0.8, 0.8])
-        fig.add_axes(self.ax)
-        fig.suptitle("Movement heatmaps", fontsize=5, y=0.93)
-        super().__init__(fig)
+        self.fig = matplotlib.figure.Figure(figsize=(width, height), dpi=dpi)
+        self.ax = matplotlib.axes.Axes(self.fig, [0.1, 0.05, 0.8, 0.8])
+        self.fig.add_axes(self.ax)
+        super().__init__(self.fig)
         self.ax.set_axis_off()
 
     def fill(self, masks, first_frame):
@@ -139,14 +140,19 @@ class HeatmapCanvas(FigureCanvasQTAgg):
         self.ax.cla()
         self.ax.set_axis_off()
 
+    def set_title(self, title):
+        self.fig.suptitle(title, fontsize=5, y=0.93)
+
 
 class VideoCapturer(QThread):
     changePixmap = pyqtSignal((np.ndarray, int))
     disableGUI = pyqtSignal(bool)
 
-    def __init__(self, n_frames=300, ):
+    def __init__(self, parent=None, n_frames=300, delay=1):
         super().__init__()
         self.n_frames = n_frames
+        self.delay = delay
+        self.parent = parent
 
     def run(self):
         self.disableGUI.emit(True)
@@ -157,7 +163,7 @@ class VideoCapturer(QThread):
 
         curr_diff = curr_time - start_time
 
-        while curr_diff < 1:
+        while curr_diff < self.delay:
             ret, self.frame = self.cap.read()
             if ret:
                 self.frame = cv2.flip(self.frame, 1)
@@ -165,7 +171,7 @@ class VideoCapturer(QThread):
                 rgbimage = cv2.resize(rgbimage, (711, 400))
                 # Draw a big number in the center for the first frames
                 font = cv2.FONT_HERSHEY_DUPLEX
-                text = str(3 - np.floor(curr_diff).astype(int))
+                text = str(self.delay - np.floor(curr_diff).astype(int))
                 # get boundary of this text
                 textsize = cv2.getTextSize(text, font, 6, 15)[0]
                 # get coords based on boundary
@@ -178,6 +184,7 @@ class VideoCapturer(QThread):
                 curr_time = time.time()
                 curr_diff = curr_time - start_time
 
+        self.parent.main_canvas.setStyleSheet("border: 2px solid red;")
         for i in range(self.n_frames):
             ret, self.frame = self.cap.read()
             if ret:
@@ -186,6 +193,7 @@ class VideoCapturer(QThread):
                 rgbimage = cv2.resize(rgbimage, (711, 400))
                 self.changePixmap.emit(rgbimage, i)
 
+        self.parent.main_canvas.setStyleSheet("border: 0px;")
         self.cap.release()
         self.disableGUI.emit(False)
 
@@ -222,6 +230,10 @@ class App(QWidget):
         self.setWindowTitle("MiVOS")
         self.setGeometry(100, 100, self.width, self.height + 100)
 
+        # Corporative logo
+        logo = QLabel()
+        logo.setPixmap(QPixmap(os.path.join("assets", "logo_dasci.png")))
+
         # Language selection buttons
         self.spanish_button = QPushButton("Español")
         self.spanish_button.clicked.connect(lambda: self.select_language("spanish"))
@@ -232,6 +244,7 @@ class App(QWidget):
         languages = QHBoxLayout()
         languages.addWidget(self.spanish_button)
         languages.addWidget(self.english_button)
+        languages.addStretch(1)
 
         # Recording button
         self.record_button = QPushButton()
@@ -256,11 +269,11 @@ class App(QWidget):
         # LCD
         self.lcd = QTextEdit()
         self.lcd.setReadOnly(True)
-        self.lcd.setMaximumHeight(50)
-        self.lcd.setMinimumHeight(40)
-        self.lcd.setMaximumWidth(150)
-        self.lcd.setMinimumWidth(120)
-        self.lcd.setText("{: 4d} / {: 4d}".format(0, self.num_frames - 1))
+        self.lcd.setMaximumHeight(45)
+        self.lcd.setMinimumHeight(45)
+        self.lcd.setMaximumWidth(110)
+        self.lcd.setMinimumWidth(110)
+        self.lcd.setText("{: 3d} / {: 3d}".format(0, self.num_frames - 1))
 
         # brush size
         self.brush_size = 3
@@ -312,6 +325,7 @@ class App(QWidget):
 
         # Language selectors, drawing area and navigation bar
         left_column = QVBoxLayout()
+        left_column.addWidget(logo)
         left_column.addLayout(languages)
         left_column.addWidget(self.main_canvas)
         left_column.addLayout(navi)
@@ -375,6 +389,10 @@ class App(QWidget):
         self.console.clear()
         self.console_push_text(self.texts['console_language_info'])
         self.console_push_text(self.texts['console_init_text'])
+        self.finger_movements_canvas.set_title(self.texts['movement_canvas_title'])
+        self.finger_movements_canvas.draw()
+        self.heatmap_canvas.set_title(self.texts['heatmap_canvas_title'])
+        self.heatmap_canvas.draw()
 
     def show_starting_image(self):
         height, width, channel = self.starting_image.shape
@@ -424,7 +442,7 @@ class App(QWidget):
         self.finger_movements_canvas.draw()
         self.heatmap_canvas.clear()
         self.heatmap_canvas.draw()
-        self.recorder = VideoCapturer(self.num_frames)
+        self.recorder = VideoCapturer(self, self.num_frames)
         self.recorder.changePixmap.connect(self.set_image)
         self.recorder.disableGUI.connect(self.disable_gui_for_record)
         self.recorder.start()
@@ -581,7 +599,8 @@ class App(QWidget):
     def on_compute(self):
         finger_centers = extract_centers(
             self.current_mask, normalize=True, move_to_origin=True)
-        self.finger_movements_canvas.fill(finger_centers)
+        self.finger_movements_canvas.fill(
+            finger_centers, self.texts['movement_canvas_labels'])
         self.finger_movements_canvas.draw()
         self.heatmap_canvas.fill(self.current_mask, self.images[0].astype(int))
         self.heatmap_canvas.draw()
@@ -619,6 +638,7 @@ class App(QWidget):
         self.finger_movements_canvas.draw()
         self.heatmap_canvas.clear()
         self.heatmap_canvas.draw()
+        self.lcd.setText("{: 3d} / {: 3d}".format(0, self.num_frames - 1))
         self.console.clear()
         self.console_push_text(self.texts['console_init_text'])
 
@@ -626,10 +646,12 @@ class App(QWidget):
     def on_prev(self):
         # self.tl_slide will trigger on setValue
         self.cursur = max(0, self.cursur - 1)
+        self.show_current_frame()
 
     def on_next(self):
         # self.tl_slide will trigger on setValue
         self.cursur = min(self.cursur + 1, self.num_frames - 1)
+        self.show_current_frame()
 
     def on_time(self):
         self.cursur += 1
@@ -682,7 +704,6 @@ class App(QWidget):
         self.undo_button.setEnabled(boolean)
         self.record_button.setEnabled(boolean)
         self.reset_button.setEnabled(boolean)
-        self.lcd.setEnabled(boolean)
 
     def hit_number_key(self, number):
         if number == self.current_object:
@@ -808,12 +829,16 @@ class App(QWidget):
         self.reset_button.setEnabled(True)
         self.record_button.setEnabled(True)
         if self.state == State.INITIAL:
+            self.spanish_button.setEnabled(True)
+            self.english_button.setEnabled(True)
             self.play_button.setEnabled(False)
             self.run_button.setEnabled(False)
             self.undo_button.setEnabled(False)
             self.compute_button.setEnabled(False)
             self.main_canvas.setMouseTracking(False)
         elif self.state == State.RECORDED:
+            self.spanish_button.setEnabled(False)
+            self.english_button.setEnabled(False)
             self.play_button.setEnabled(True)
             self.run_button.setEnabled(True)
             self.undo_button.setEnabled(False)
@@ -849,7 +874,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--n_frames",
         help="Number of frames to record in each execution.",
-        type=int, default=30
+        type=int, default=20
     )
     parser.add_argument(
         "--num_objects",
@@ -919,5 +944,12 @@ if __name__ == "__main__":
             args.mem_freq,
             args.mem_profile,
         )
-        apply_stylesheet(app, theme='dark_lightgreen.xml')
+        apply_stylesheet(
+            app, theme=os.path.join('assets', 'dasci_colors.xml'),
+            invert_secondary=True
+        )
+        stylesheet = app.styleSheet()
+        with open(os.path.join('assets', 'custom.css'), 'r') as f:
+            app.setStyleSheet(stylesheet + f.read().format(**os.environ))
+
         sys.exit(app.exec_())

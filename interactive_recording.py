@@ -217,7 +217,6 @@ class App(QWidget):
         self.mem_profile = mem_profile
 
         self.height, self.width = self.starting_image.shape[:2]
-        self.select_language("spanish")
 
         # set window
         self.setWindowTitle("MiVOS")
@@ -235,23 +234,23 @@ class App(QWidget):
         languages.addWidget(self.english_button)
 
         # Recording button
-        self.record_button = QPushButton(self.texts['record_button_label'])
+        self.record_button = QPushButton()
         self.record_button.clicked.connect(self.on_record)
 
         # Interaction with video buttons
-        self.play_button = QPushButton(self.texts['play_button_play_label'])
+        self.play_button = QPushButton()
         self.play_button.clicked.connect(self.on_play)
-        self.run_button = QPushButton(self.texts['run_button_label'])
+        self.run_button = QPushButton()
         self.run_button.clicked.connect(self.on_run)
 
-        self.compute_button = QPushButton(self.texts['compute_button_label'])
+        self.compute_button = QPushButton()
         self.compute_button.clicked.connect(self.on_compute)
 
-        self.reset_button = QPushButton(self.texts['reset_button_label'])
+        self.reset_button = QPushButton()
         self.reset_button.setProperty("class", "danger")
         self.reset_button.clicked.connect(self.on_reset)
 
-        self.undo_button = QPushButton(self.texts['undo_button_label'])
+        self.undo_button = QPushButton()
         self.undo_button.clicked.connect(self.on_undo)
 
         # LCD
@@ -351,12 +350,11 @@ class App(QWidget):
         QShortcut(QKeySequence(Qt.Key_Right), self).activated.connect(self.on_next)
 
         self.interacted_mask = None
+        self.waiting_to_start = True
 
         self.show_starting_image()
+        self.select_language("spanish")
         self.show()
-
-        self.waiting_to_start = True
-        self.console_push_text(self.texts['console_init_text'])
 
     def resizeEvent(self, event):
         self.show_starting_image()
@@ -364,6 +362,19 @@ class App(QWidget):
     def select_language(self, language):
         with open(os.path.join("assets", f"{language}_texts.json"), "r") as f:
             self.texts = json.load(f)
+
+        self.refresh_ui_labels()
+
+    def refresh_ui_labels(self):
+        self.record_button.setText(self.texts['record_button_label'])
+        self.play_button.setText(self.texts['play_button_play_label'])
+        self.run_button.setText(self.texts['run_button_label'])
+        self.undo_button.setText(self.texts['undo_button_label'])
+        self.compute_button.setText(self.texts['compute_button_label'])
+        self.reset_button.setText(self.texts['reset_button_label'])
+        self.console.clear()
+        self.console_push_text(self.texts['console_language_info'])
+        self.console_push_text(self.texts['console_init_text'])
 
     def show_starting_image(self):
         height, width, channel = self.starting_image.shape

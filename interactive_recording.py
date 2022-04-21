@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Based on https://github.com/seoungwugoh/ivs-demo
 
@@ -410,7 +411,7 @@ class App(QWidget):
         self.show_starting_image()
 
     def select_language(self, language):
-        with open(os.path.join("assets", f"{language}_texts.json"), "r") as f:
+        with open(os.path.join("assets", f"{language}_texts.json"), "r", encoding="utf8") as f:
             self.texts = json.load(f)
 
         self.current_language = language

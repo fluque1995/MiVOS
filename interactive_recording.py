@@ -32,7 +32,8 @@ from PyQt5.QtWidgets import (
     QProgressBar,
 )
 
-from PyQt5.QtGui import QPixmap, QKeySequence, QImage, QTextCursor
+from PyQt5.QtGui import QPixmap, QKeySequence, QImage, QTextCursor, QPainter
+from PyQt5 import QtSvg
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 
 from qt_material import apply_stylesheet
@@ -64,6 +65,15 @@ matplotlib.pyplot.style.use("ggplot")
 palette = pal_color_map()
 
 
+def debug_trace():
+    '''Set a tracepoint in the Python debugger that works with Qt'''
+    from PyQt5.QtCore import pyqtRemoveInputHook
+    from pdb import set_trace
+
+    pyqtRemoveInputHook()
+    set_trace()
+
+
 class State(Enum):
     INITIAL = 0
     RECORDED = 1
@@ -93,17 +103,18 @@ class FingerMovementsCanvas(FigureCanvasQTAgg):
         super().__init__(self.fig)
 
     def fill(self, finger_centers, labels):
+
         for i, finger in enumerate(finger_centers):
             self.axes[0].plot(-finger[:, 0], linewidth=0.5)
             self.axes[1].plot(finger[:, 1], range(len(finger)), linewidth=0.5)
 
-        vert_max = np.max(np.abs(finger_centers[:, :, 0]))
-        horz_max = np.max(np.abs(finger_centers[:, :, 1]))
+        vert_max = np.nanmax(np.abs(finger_centers[:, :, 0]))
+        horz_max = np.nanmax(np.abs(finger_centers[:, :, 1]))
 
         if vert_max < 20:
             self.axes[0].set_ylim([-20, 20])
         if horz_max < 10:
-            self.axes[1].set_xlim([-20, 20])
+            self.axes[1].set_xlim([-10, 10])
 
         self.axes[0].set_axis_on()
         self.axes[1].set_axis_on()
@@ -210,8 +221,9 @@ class App(QWidget):
         fuse_net,
         s2m_ctrl: S2MController,
         fbrs_ctrl: FBRSController,
-        starting_image,
         vid_len,
+        video_width,
+        video_height,
         num_objects,
         mem_freq,
         mem_profile,
@@ -219,7 +231,6 @@ class App(QWidget):
 
         super().__init__()
 
-        self.starting_image = starting_image
         self.num_frames = vid_len
         self.images = np.empty((self.num_frames, 400, 711, 3))
         self.num_objects = num_objects
@@ -229,8 +240,8 @@ class App(QWidget):
         self.fbrs_controller = fbrs_ctrl
         self.mem_freq = mem_freq
         self.mem_profile = mem_profile
-
-        self.height, self.width = self.starting_image.shape[:2]
+        self.width = video_width
+        self.height = video_height
 
         # set window
         self.setWindowTitle("MiVOS")
@@ -271,6 +282,16 @@ class App(QWidget):
 
         self.undo_button = QPushButton()
         self.undo_button.clicked.connect(self.on_undo)
+
+        # Finger selection buttons
+        self.left_object_button = QPushButton()
+        self.left_object_button.clicked.connect(
+            functools.partial(self.hit_number_key, 1)
+        )
+        self.right_object_button = QPushButton()
+        self.right_object_button.clicked.connect(
+            functools.partial(self.hit_number_key, 2)
+        )
 
         # LCD
         self.lcd = QTextEdit()
@@ -315,6 +336,14 @@ class App(QWidget):
         self.progress.setStyleSheet("QProgressBar{color: black;}")
         self.progress.setAlignment(Qt.AlignCenter)
 
+        # Finger selection layout
+        finger_navi = QHBoxLayout()
+        finger_navi.addStretch(3)
+        finger_navi.addWidget(self.left_object_button)
+        finger_navi.addStretch(1)
+        finger_navi.addWidget(self.right_object_button)
+        finger_navi.addStretch(3)
+
         # navigator
         navi = QHBoxLayout()
         navi.addWidget(self.lcd)
@@ -334,6 +363,7 @@ class App(QWidget):
         left_column.addWidget(logo)
         left_column.addLayout(languages)
         left_column.addWidget(self.main_canvas)
+        left_column.addLayout(finger_navi)
         left_column.addLayout(navi)
 
         # Right bar
@@ -372,8 +402,8 @@ class App(QWidget):
         self.interacted_mask = None
         self.waiting_to_start = True
 
-        self.show_starting_image()
         self.select_language("spanish")
+        self.show_starting_image()
         self.show()
 
     def resizeEvent(self, event):
@@ -383,15 +413,18 @@ class App(QWidget):
         with open(os.path.join("assets", f"{language}_texts.json"), "r") as f:
             self.texts = json.load(f)
 
-        self.refresh_ui_labels()
+        self.current_language = language
+        self.refresh_ui_elements()
 
-    def refresh_ui_labels(self):
+    def refresh_ui_elements(self):
         self.record_button.setText(self.texts["record_button_label"])
         self.play_button.setText(self.texts["play_button_play_label"])
         self.run_button.setText(self.texts["run_button_label"])
         self.undo_button.setText(self.texts["undo_button_label"])
         self.compute_button.setText(self.texts["compute_button_label"])
         self.reset_button.setText(self.texts["reset_button_label"])
+        self.left_object_button.setText(self.texts["left_object_button_label"])
+        self.right_object_button.setText(self.texts["right_object_button_label"])
         self.console.clear()
         self.console_push_text(self.texts["console_language_info"])
         self.console_push_text(self.texts["console_init_text"])
@@ -399,21 +432,24 @@ class App(QWidget):
         self.finger_movements_canvas.draw()
         self.heatmap_canvas.set_title(self.texts["heatmap_canvas_title"])
         self.heatmap_canvas.draw()
+        self.show_starting_image()
 
     def show_starting_image(self):
-        height, width, channel = self.starting_image.shape
-        bytesPerLine = channel * width
+        starting_image_path = os.path.join(
+            "assets",
+            f"{self.current_language}_instructions.svg"
+        )
+        renderer = QtSvg.QSvgRenderer(starting_image_path)
+        painter = QPainter()
+        canvas_w = self.main_canvas.width()
+        canvas_prop_h = int(canvas_w * self.height / self.width)
         qImg = QImage(
-            self.starting_image.data, width, height, bytesPerLine, QImage.Format_RGB888
+            canvas_w, canvas_prop_h, QImage.Format_RGB888
         )
-
-        self.main_canvas.setPixmap(
-            QPixmap(
-                qImg.scaled(
-                    self.main_canvas.size(), Qt.KeepAspectRatio, Qt.FastTransformation
-                )
-            )
-        )
+        painter.begin(qImg)
+        renderer.render(painter)
+        painter.end()
+        self.main_canvas.setPixmap(QPixmap(qImg))
 
         self.main_canvas_size = self.main_canvas.size()
         self.image_size = qImg.size()
@@ -461,6 +497,9 @@ class App(QWidget):
         self.run_button.setEnabled(not disable_gui)
         self.reset_button.setEnabled(not disable_gui)
         self.main_canvas.setMouseTracking(not disable_gui)
+
+        self.enable_object_selection_buttons(all_disabled=disable_gui)
+
         if not disable_gui:
             self.reset_initial_state()
             self.clear_visualization()
@@ -613,41 +652,30 @@ class App(QWidget):
         self.heatmap_canvas.fill(self.current_mask, self.images[0].astype(int))
         self.heatmap_canvas.draw()
         finger_movements = movement_index(self.current_mask)
-        if finger_movements.get(1) is not None:
-            self.console_push_text(
-                self.texts["console_left_object_movement"]
-                + f" {finger_movements[1]:.4f}"
-            )
-            if finger_movements[1] < 1.2:
+        for i in [1, 2]:
+            if finger_movements.get(i) is not None:
                 self.console_push_text(
-                    self.texts["console_left_object_movement_slightly"]
+                    (f'{self.texts["console_object_movement_index"].format(ind=i)} '
+                     f'{finger_movements[i]:.4f}')
                 )
-            elif finger_movements[1] < 2.5:
-                self.console_push_text(
-                    self.texts["console_left_object_movement_moderately"]
-                )
-            else:
-                self.console_push_text(
-                    self.texts["console_left_object_movement_hardly"]
-                )
-
-        if finger_movements.get(2) is not None:
-            self.console_push_text(
-                self.texts["console_right_object_movement"]
-                + f" {finger_movements[2]:.4f}"
-            )
-            if finger_movements[2] < 1.2:
-                self.console_push_text(
-                    self.texts["console_right_object_movement_slightly"]
-                )
-            elif finger_movements[2] < 2.5:
-                self.console_push_text(
-                    self.texts["console_right_object_movement_moderately"]
-                )
-            else:
-                self.console_push_text(
-                    self.texts["console_right_object_movement_hardly"]
-                )
+                if finger_movements[i] < 1.2:
+                    self.console_push_text(
+                        self.texts["console_object_movement_slightly"].format(
+                            ind=i
+                        )
+                    )
+                elif finger_movements[i] < 2.5:
+                    self.console_push_text(
+                        self.texts["console_object_movement_moderately"].format(
+                            ind=i
+                        )
+                    )
+                else:
+                    self.console_push_text(
+                        self.texts["console_object_movement_hardly"].format(
+                            ind=i
+                        )
+                    )
         self.state = State.FINAL
         self.refresh_enabled_buttons()
 
@@ -723,6 +751,7 @@ class App(QWidget):
         self.undo_button.setEnabled(boolean)
         self.record_button.setEnabled(boolean)
         self.reset_button.setEnabled(boolean)
+        self.enable_object_selection_buttons(all_disabled=not boolean)
 
     def hit_number_key(self, number):
         if number == self.current_object:
@@ -730,10 +759,13 @@ class App(QWidget):
         self.current_object = number
         if self.fbrs_controller is not None:
             self.fbrs_controller.unanchor()
-        self.console_push_text(self.text["console_selected_object"] + f" {number}")
+        self.console_push_text(
+            f'{self.texts["console_selected_object"]} {number}'
+        )
         self.clear_brush()
         self.vis_brush(self.last_ex, self.last_ey)
         self.update_interact_vis()
+        self.enable_object_selection_buttons(all_disabled=False)
         self.show_current_frame()
 
     def clear_brush(self):
@@ -852,7 +884,10 @@ class App(QWidget):
             self.run_button.setEnabled(False)
             self.undo_button.setEnabled(False)
             self.compute_button.setEnabled(False)
+
             self.main_canvas.setMouseTracking(False)
+            self.enable_object_selection_buttons(all_disabled=True)
+
         elif self.state == State.RECORDED:
             self.spanish_button.setEnabled(False)
             self.english_button.setEnabled(False)
@@ -860,20 +895,36 @@ class App(QWidget):
             self.run_button.setEnabled(True)
             self.undo_button.setEnabled(False)
             self.compute_button.setEnabled(False)
+
             self.main_canvas.setMouseTracking(True)
+            self.enable_object_selection_buttons(all_disabled=False)
+
         elif self.state == State.PROPAGATED:
             self.play_button.setEnabled(True)
             self.run_button.setEnabled(True)
             self.undo_button.setEnabled(False)
             self.compute_button.setEnabled(True)
+
             self.main_canvas.setMouseTracking(True)
+            self.enable_object_selection_buttons(all_disabled=False)
+
         elif self.state == State.FINAL:
             self.play_button.setEnabled(True)
             self.run_button.setEnabled(False)
             self.undo_button.setEnabled(False)
             self.compute_button.setEnabled(False)
-            self.main_canvas.setMouseTracking(True)
 
+            self.main_canvas.setMouseTracking(True)
+            self.enable_object_selection_buttons(all_disabled=True)
+
+    def enable_object_selection_buttons(self, all_disabled):
+        if all_disabled:
+            self.left_object_button.setEnabled(False)
+            self.right_object_button.setEnabled(False)
+        else:
+            left_object_active = (self.current_object == 1)
+            self.left_object_button.setEnabled(not left_object_active)
+            self.right_object_button.setEnabled(left_object_active)
 
 if __name__ == "__main__":
 
@@ -893,6 +944,18 @@ if __name__ == "__main__":
         help="Number of frames to record in each execution.",
         type=int,
         default=20,
+    )
+    parser.add_argument(
+        "--width",
+        help="Width video resolution",
+        type=int,
+        default=711,
+    )
+    parser.add_argument(
+        "--height",
+        help="Height video resolution.",
+        type=int,
+        default=400,
     )
     parser.add_argument(
         "--num_objects",
@@ -932,10 +995,6 @@ if __name__ == "__main__":
         else:
             s2m_model = None
 
-        # Load the placeholder image
-        starting_image = cv2.imread(args.starting_image)
-        starting_image = cv2.cvtColor(starting_image, cv2.COLOR_BGR2RGB)
-
         # Determine the number of objects
         num_objects = args.num_objects
         if num_objects is None:
@@ -956,8 +1015,9 @@ if __name__ == "__main__":
             fusion_model,
             s2m_controller,
             fbrs_controller,
-            starting_image,
             args.n_frames,
+            args.width,
+            args.height,
             num_objects,
             args.mem_freq,
             args.mem_profile,

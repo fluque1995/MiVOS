@@ -13,6 +13,8 @@ os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 masks_dir = '../Mascaras/'
 output_dir = '../Resultados/'
 
+graph_file_extensions = '.pdf'
+
 os.makedirs(output_dir, exist_ok=True)
 
 statistics_csv = open(os.path.join(output_dir, 'statistics.csv'),
@@ -87,7 +89,7 @@ for patient in sorted(os.listdir(masks_dir)):
                 freq_and_mags = frequency_and_magnitude(
                     curr_points,
                     fps=30,
-                    graph_path=os.path.join(output_path, "fourier.png"))
+                    graph_path=os.path.join(output_path, "fourier" + graph_file_extensions))
 
                 try:
                     f1 = freq_and_mags[0]
@@ -165,7 +167,7 @@ for patient in sorted(os.listdir(masks_dir)):
                                x_limit=x_limit,
                                y_limit=y_limit,
                                saving_path=os.path.join(
-                                   output_path, 'movement.png'))
+                                   output_path, 'movement' + graph_file_extensions))
                 print('Computing movement index for the whole video...')
                 mov_indices = movement_index(masks)
                 mv1_whole = mov_indices[list(mov_indices)[0]]
@@ -194,7 +196,7 @@ for patient in sorted(os.listdir(masks_dir)):
                 plot_finger_heatmaps([masks], [first_frame],
                                      movement_index=True,
                                      saving_path=os.path.join(
-                                         output_path, 'heatmap.png'))
+                                         output_path, 'heatmap' + graph_file_extensions))
                 print('Writing results...')
                 writer.writerow([
                     patient, visit, experiment, f1_x_whole, m1_x_whole,

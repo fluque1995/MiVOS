@@ -106,11 +106,20 @@ def frequency_and_magnitude(finger_points,
 
             if graph_path is not None:
                 with plt.style.context("ggplot"):
+                    color = list(plt.rcParams['axes.prop_cycle'])[i]['color']
                     fig, axs = plt.subplots(nrows=2, ncols=1)
                     axs[0].plot(fps * x_freqs[:len(x_freqs) // 2],
-                                x_fft[:len(x_fft) // 2])
+                                x_fft[:len(x_fft) // 2],
+                                color=color)
+                    axs[0].set_title("Vertical movement frequencies", fontsize=10)
                     axs[1].plot(fps * y_freqs[:len(y_freqs) // 2],
-                                y_fft[:len(y_fft) // 2])
+                                y_fft[:len(y_fft) // 2], color=color)
+                    axs[1].set_title("Horizontal movement frequencies", fontsize=10)
+
+                    finger_d = {0: 'right', 1: 'left'}
+                    fig.suptitle(f"Magnitude-frequency for {finger_d[i]} finger")
+
+                    fig.subplots_adjust(hspace=0.4)
 
                     graph_prefix = "right_" if i == 0 else "left_"
                     fig.savefig(

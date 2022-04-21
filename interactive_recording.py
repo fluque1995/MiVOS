@@ -164,7 +164,7 @@ class VideoCapturer(QThread):
     changePixmap = pyqtSignal((np.ndarray, int))
     disableGUI = pyqtSignal(bool)
 
-    def __init__(self, parent=None, n_frames=300, delay=1):
+    def __init__(self, parent=None, n_frames=300, delay=3):
         super().__init__()
         self.n_frames = n_frames
         self.delay = delay
@@ -931,7 +931,7 @@ if __name__ == "__main__":
 
     # Arguments parsing
     parser = ArgumentParser()
-    parser.add_argument("--prop_model", default="saves/stcn.pth")
+    parser.add_argument("--prop_model", default="saves/stcn_efficientnet.pth")
     parser.add_argument("--fusion_model", default="saves/fusion_stcn.pth")
     parser.add_argument("--s2m_model", default="saves/s2m_mobilenet.pth")
     parser.add_argument("--fbrs_model", default="saves/fbrs.pth")
@@ -944,7 +944,7 @@ if __name__ == "__main__":
         "--n_frames",
         help="Number of frames to record in each execution.",
         type=int,
-        default=20,
+        default=150,
     )
     parser.add_argument(
         "--width",

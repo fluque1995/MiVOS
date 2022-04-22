@@ -644,7 +644,7 @@ class App(QWidget):
 
     def on_compute(self):
         finger_centers = extract_centers(
-            self.current_mask, normalize=True, move_to_origin=True
+            self.current_mask, normalize=False, move_to_origin=True
         )
         self.finger_movements_canvas.fill(
             finger_centers, self.texts["movement_canvas_labels"]

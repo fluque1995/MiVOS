@@ -1,4 +1,3 @@
-import cv2
 import io_utils
 import matplotlib.pyplot as plt
 import os
@@ -7,8 +6,6 @@ import logging
 from itertools import product
 from masks_manipulation import extract_centers, savgol_smoothing
 from visualization.plotting import plot_movements
-
-os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 
 masks_folder = '../Mascaras'
 output_folder = '../Resultados'

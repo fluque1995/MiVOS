@@ -8,8 +8,6 @@ from masks_manipulation import (extract_centers, extract_extreme_points,
                                 frequency_and_magnitude, movement_index)
 from visualization.plotting import plot_movements, plot_finger_heatmaps
 
-os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
-
 masks_dir = '../Mascaras/'
 output_dir = '../Resultados/'
 

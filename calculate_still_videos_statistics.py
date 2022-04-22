@@ -21,16 +21,16 @@ statistics_csv = open(os.path.join(output_dir, 'statistics.csv'),
 writer = csv.writer(statistics_csv)
 
 header = [
-    'Paciente', 'Visita', 'Experimento', 'Frecuencia_x_dedo_1_completo',
-    'Magnitud_x_dedo_1_completo', 'Frecuencia_y_dedo_1_completo',
-    'Magnitud_y_dedo_1_completo', 'Frecuencia_x_dedo_2_completo',
-    'Magnitud_x_dedo_2_completo', 'Frecuencia_y_dedo_2_completo',
-    'Magnitud_y_dedo_2_completo', 'Frecuencia_x_dedo_1_30',
-    'Magnitud_x_dedo_1_30', 'Frecuencia_y_dedo_1_30', 'Magnitud_y_dedo_1_30',
-    'Frecuencia_x_dedo_2_30', 'Magnitud_x_dedo_2_30', 'Frecuencia_y_dedo_2_30',
-    'Magnitud_y_dedo_2_30', 'Frecuencia_x_dedo_1_60', 'Magnitud_x_dedo_1_60',
-    'Frecuencia_y_dedo_1_60', 'Magnitud_y_dedo_1_60', 'Frecuencia_x_dedo_2_60',
-    'Magnitud_x_dedo_2_60', 'Frecuencia_y_dedo_2_60', 'Magnitud_y_dedo_2_60',
+    'Paciente', 'Visita', 'Evperimento', 'Frecuencia_v_dedo_1_completo',
+    'Magnitud_v_dedo_1_completo', 'Frecuencia_h_dedo_1_completo',
+    'Magnitud_h_dedo_1_completo', 'Frecuencia_v_dedo_2_completo',
+    'Magnitud_v_dedo_2_completo', 'Frecuencia_h_dedo_2_completo',
+    'Magnitud_h_dedo_2_completo', 'Frecuencia_v_dedo_1_30',
+    'Magnitud_v_dedo_1_30', 'Frecuencia_h_dedo_1_30', 'Magnitud_h_dedo_1_30',
+    'Frecuencia_v_dedo_2_30', 'Magnitud_v_dedo_2_30', 'Frecuencia_h_dedo_2_30',
+    'Magnitud_h_dedo_2_30', 'Frecuencia_v_dedo_1_60', 'Magnitud_v_dedo_1_60',
+    'Frecuencia_h_dedo_1_60', 'Magnitud_h_dedo_1_60', 'Frecuencia_v_dedo_2_60',
+    'Magnitud_v_dedo_2_60', 'Frecuencia_h_dedo_2_60', 'Magnitud_h_dedo_2_60',
     'Movimiento_dedo_1_completo', 'Movimiento_dedo_2_completo',
     'Movimiento_dedo_1_30', 'Movimiento_dedo_2_30', 'Movimiento_dedo_1_60',
     'Movimiento_dedo_2_60'
@@ -97,14 +97,14 @@ for patient in sorted(os.listdir(masks_dir)):
                     f2 = freq_and_mags[1]
                 except:
                     f2 = []
-                f1_x_whole = f1['x']['max_freq'] if len(f1) > 0 else '-'
-                m1_x_whole = f1['x']['max_mag'] if len(f1) > 0 else '-'
-                f1_y_whole = f1['y']['max_freq'] if len(f1) > 0 else '-'
-                m1_y_whole = f1['y']['max_mag'] if len(f1) > 0 else '-'
-                f2_x_whole = f2['x']['max_freq'] if len(f2) > 0 else '-'
-                m2_x_whole = f2['x']['max_mag'] if len(f2) > 0 else '-'
-                f2_y_whole = f2['y']['max_freq'] if len(f2) > 0 else '-'
-                m2_y_whole = f2['y']['max_mag'] if len(f2) > 0 else '-'
+                f1_v_whole = f1['v']['max_freq'] if len(f1) > 0 else '-'
+                m1_v_whole = f1['v']['max_mag'] if len(f1) > 0 else '-'
+                f1_h_whole = f1['h']['max_freq'] if len(f1) > 0 else '-'
+                m1_h_whole = f1['h']['max_mag'] if len(f1) > 0 else '-'
+                f2_v_whole = f2['v']['max_freq'] if len(f2) > 0 else '-'
+                m2_v_whole = f2['v']['max_mag'] if len(f2) > 0 else '-'
+                f2_h_whole = f2['h']['max_freq'] if len(f2) > 0 else '-'
+                m2_h_whole = f2['h']['max_mag'] if len(f2) > 0 else '-'
 
                 print('Computing frequency with temporal_window=30...')
                 freq_and_mags_30 = frequency_and_magnitude(curr_points,
@@ -119,14 +119,14 @@ for patient in sorted(os.listdir(masks_dir)):
                 except:
                     f2_30 = []
 
-                f1_x_30 = f1_30['x_freq'] if len(f1_30) > 0 else '-'
-                m1_x_30 = f1_30['x_mag'] if len(f1_30) > 0 else '-'
-                f1_y_30 = f1_30['y_freq'] if len(f1_30) > 0 else '-'
-                m1_y_30 = f1_30['y_mag'] if len(f1_30) > 0 else '-'
-                f2_x_30 = f2_30['x_freq'] if len(f2_30) > 0 else '-'
-                m2_x_30 = f2_30['x_mag'] if len(f2_30) > 0 else '-'
-                f2_y_30 = f2_30['y_freq'] if len(f2_30) > 0 else '-'
-                m2_y_30 = f2_30['y_mag'] if len(f2_30) > 0 else '-'
+                f1_v_30 = f1_30['v_freq'] if len(f1_30) > 0 else '-'
+                m1_v_30 = f1_30['v_mag'] if len(f1_30) > 0 else '-'
+                f1_h_30 = f1_30['h_freq'] if len(f1_30) > 0 else '-'
+                m1_h_30 = f1_30['h_mag'] if len(f1_30) > 0 else '-'
+                f2_v_30 = f2_30['v_freq'] if len(f2_30) > 0 else '-'
+                m2_v_30 = f2_30['v_mag'] if len(f2_30) > 0 else '-'
+                f2_h_30 = f2_30['h_freq'] if len(f2_30) > 0 else '-'
+                m2_h_30 = f2_30['h_mag'] if len(f2_30) > 0 else '-'
 
                 print('Computing frequency with temporal_window=60...')
                 freq_and_mags_60 = frequency_and_magnitude(curr_points,
@@ -141,14 +141,14 @@ for patient in sorted(os.listdir(masks_dir)):
                 except:
                     f2_60 = []
 
-                f1_x_60 = f1_60['x_freq'] if len(f1_60) > 0 else '-'
-                m1_x_60 = f1_60['x_mag'] if len(f1_60) > 0 else '-'
-                f1_y_60 = f1_60['y_freq'] if len(f1_60) > 0 else '-'
-                m1_y_60 = f1_60['y_mag'] if len(f1_60) > 0 else '-'
-                f2_x_60 = f2_60['x_freq'] if len(f2_60) > 0 else '-'
-                m2_x_60 = f2_60['x_mag'] if len(f2_60) > 0 else '-'
-                f2_y_60 = f2_60['y_freq'] if len(f2_60) > 0 else '-'
-                m2_y_60 = f2_60['y_mag'] if len(f2_60) > 0 else '-'
+                f1_v_60 = f1_60['v_freq'] if len(f1_60) > 0 else '-'
+                m1_v_60 = f1_60['v_mag'] if len(f1_60) > 0 else '-'
+                f1_h_60 = f1_60['h_freq'] if len(f1_60) > 0 else '-'
+                m1_h_60 = f1_60['h_mag'] if len(f1_60) > 0 else '-'
+                f2_v_60 = f2_60['v_freq'] if len(f2_60) > 0 else '-'
+                m2_v_60 = f2_60['v_mag'] if len(f2_60) > 0 else '-'
+                f2_h_60 = f2_60['h_freq'] if len(f2_60) > 0 else '-'
+                m2_h_60 = f2_60['h_mag'] if len(f2_60) > 0 else '-'
 
                 print('Plotting movements...')
                 if experiment[:3] == 'D-N':
@@ -197,11 +197,11 @@ for patient in sorted(os.listdir(masks_dir)):
                                          output_path, 'heatmap' + graph_file_extensions))
                 print('Writing results...')
                 writer.writerow([
-                    patient, visit, experiment, f1_x_whole, m1_x_whole,
-                    f1_y_whole, m1_y_whole, f2_x_whole, m2_x_whole, f2_y_whole,
-                    m2_y_whole, f1_x_30, m1_x_30, f1_y_30, m1_y_30, f2_x_30,
-                    m2_x_30, f2_y_30, m2_y_30, f1_x_60, m1_x_60, f1_y_60,
-                    m1_y_60, f2_x_60, m2_x_60, f2_y_60, m2_y_60, mv1_whole,
+                    patient, visit, experiment, f1_v_whole, m1_v_whole,
+                    f1_h_whole, m1_h_whole, f2_v_whole, m2_v_whole, f2_h_whole,
+                    m2_h_whole, f1_v_30, m1_v_30, f1_h_30, m1_h_30, f2_v_30,
+                    m2_v_30, f2_h_30, m2_h_30, f1_v_60, m1_v_60, f1_h_60,
+                    m1_h_60, f2_v_60, m2_v_60, f2_h_60, m2_h_60, mv1_whole,
                     mv2_whole, mv1_30, mv2_30, mv1_60, mv2_60
                 ])
             else:

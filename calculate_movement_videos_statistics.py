@@ -24,7 +24,7 @@ for patient, visit, experiment in combined_paths:
     try:
         masks = io_utils.load_masks(masks_file)
     except:
-        logging.warning("No masks found for {patient} - {visit} - {experiment}. Skipping...")
+        logging.warning(f"No masks found for {patient} - {visit} - {experiment}. Skipping...")
         continue
 
     os.makedirs(graphs_folder, exist_ok=True)

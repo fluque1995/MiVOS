@@ -81,12 +81,16 @@ def frequency_and_magnitude(
             v_freqs = v_freqs[: len(v_freqs) // 2]
 
             max_v_fft = np.max(v_fft)
-            v_thr = np.max(percentage_thr * max_v_fft, value_thr)
+            v_thr = np.max((percentage_thr * max_v_fft, value_thr))
 
             v_signif_indices = scipy.signal.find_peaks(
                 v_fft, height=v_thr, distance=10
             )[0]
             max_id_v = v_signif_indices[-1]
+            if len(v_signif_indices) > 0:
+                max_id_v = v_signif_indices[-1]
+            else:
+                max_id_v = np.argmax(v_fft)
 
             h_fft = abs(np.fft.fft(h_points))
             h_freqs = np.fft.fftfreq(len(h_fft))
@@ -95,12 +99,15 @@ def frequency_and_magnitude(
             h_freqs = h_freqs[: len(h_freqs) // 2]
 
             max_h_fft = np.max(h_fft)
-            h_thr = np.max(percentage_thr * max_h_fft, value_thr)
+            h_thr = np.max((percentage_thr * max_h_fft, value_thr))
 
             h_signif_indices = scipy.signal.find_peaks(
                 h_fft, height=h_thr, distance=10
             )[0]
-            max_id_h = h_signif_indices[-1]
+            if len(h_signif_indices) > 0:
+                max_id_h = h_signif_indices[-1]
+            else:
+                max_id_h = np.argmax(h_fft)
 
             results[i] = {
                 "v": {

@@ -86,7 +86,7 @@ def frequency_and_magnitude(
             v_signif_indices = scipy.signal.find_peaks(
                 v_fft, height=v_thr, distance=10
             )[0]
-            max_id_v = v_signif_indices[-1]
+
             if len(v_signif_indices) > 0:
                 max_id_v = v_signif_indices[-1]
             else:
@@ -104,6 +104,7 @@ def frequency_and_magnitude(
             h_signif_indices = scipy.signal.find_peaks(
                 h_fft, height=h_thr, distance=10
             )[0]
+
             if len(h_signif_indices) > 0:
                 max_id_h = h_signif_indices[-1]
             else:

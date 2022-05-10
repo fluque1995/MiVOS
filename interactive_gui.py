@@ -326,6 +326,7 @@ class App(QWidget):
 
     def save(self):
         folder_path = os.path.join("../Mascaras", self.vid_path)
+        os.makedirs(folder_path, exist_ok=True)
 
         self.console_push_text(f'Saving masks and overlays in folder {folder_path}...')
         mask_dir = path.join(folder_path, 'mask')
@@ -590,7 +591,7 @@ class App(QWidget):
         if self.timer.isActive():
             self.timer.stop()
         else:
-            self.timer.start(1000 / 25)
+            self.timer.start(1000 // 25)
 
     def on_undo(self):
         if self.in_local_mode:
@@ -989,7 +990,7 @@ if __name__ == '__main__':
     parser.add_argument('--video', help='Video file readable by OpenCV. Either this or --images need to be specified.', default='example/example.mp4')
     parser.add_argument('--num_objects', help='Default: 1 if no masks provided, masks.max() otherwise', default=2, type=int)
     parser.add_argument('--mem_freq', default=5, type=int)
-    parser.add_argument('--mem_profile', default=2, type=int, help='0 - Faster and more memory intensive; 2 - Slower and less memory intensive. Default: 0.')
+    parser.add_argument('--mem_profile', default=0, type=int, help='0 - Faster and more memory intensive; 2 - Slower and less memory intensive. Default: 0.')
     parser.add_argument('--masks', help='Optional, Ground truth masks', default=None)
     parser.add_argument('--no_amp', help='Turn off AMP', action='store_true')
     parser.add_argument('--resolution', help='Pass -1 to use original size', default=400, type=int)

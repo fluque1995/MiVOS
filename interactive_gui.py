@@ -1013,7 +1013,6 @@ if __name__ == '__main__':
                 prop_model_str = 'saves/stcn.pth'
         prop_saved = torch.load(prop_model_str)
         prop_model.load_state_dict(prop_saved)
-        print(prop_model)
 
         fusion_saved = torch.load(args.fusion_model)
         fusion_model = FusionNet().cuda().eval()

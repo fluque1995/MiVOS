@@ -30,7 +30,8 @@ from PyQt5 import QtCore
 from inference_core import InferenceCore
 from interact.s2m_controller import S2MController
 from interact.fbrs_controller import FBRSController
-from model.propagation.prop_net import PropagationNetwork
+from model.propagation.resnet.prop_net import ResnetPropagationNetwork
+from model.propagation.efficientnet.prop_net import EfficientnetPropagationNetwork
 from model.fusion_net import FusionNet
 from model.s2m.s2m_network import deeplabv3plus_mobilenet as S2M
 from util.tensor_util import unpad_3dim
@@ -982,7 +983,9 @@ if __name__ == '__main__':
 
     # Arguments parsing
     parser = ArgumentParser()
-    parser.add_argument('--prop_model', default='saves/stcn_efficientnet.pth')
+    parser.add_argument('--prop_arch', default='efficientnet',
+                        choices=['efficientnet', 'resnet'])
+    parser.add_argument('--prop_model')
     parser.add_argument('--fusion_model', default='saves/fusion_stcn.pth')
     parser.add_argument('--s2m_model', default='saves/s2m_mobilenet.pth')
     parser.add_argument('--fbrs_model', default='saves/fbrs.pth')
@@ -999,9 +1002,18 @@ if __name__ == '__main__':
     with torch.cuda.amp.autocast(enabled=not args.no_amp):
 
         # Load our checkpoint
-        prop_saved = torch.load(args.prop_model)
-        prop_model = PropagationNetwork().cuda().eval()
+        prop_model_str = args.prop_model
+        if args.prop_arch == 'efficientnet':
+            prop_model = EfficientnetPropagationNetwork().cuda().eval()
+            if args.prop_model is None:
+                prop_model_str = 'saves/stcn_efficientnet.pth'
+        elif args.prop_arch == 'resnet':
+            prop_model = ResnetPropagationNetwork().cuda().eval()
+            if args.prop_model is None:
+                prop_model_str = 'saves/stcn.pth'
+        prop_saved = torch.load(prop_model_str)
         prop_model.load_state_dict(prop_saved)
+        print(prop_model)
 
         fusion_saved = torch.load(args.fusion_model)
         fusion_model = FusionNet().cuda().eval()

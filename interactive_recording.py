@@ -42,7 +42,7 @@ from qt_material import apply_stylesheet
 from inference_core import InferenceCore
 from interact.s2m_controller import S2MController
 from interact.fbrs_controller import FBRSController
-from model.propagation.prop_net import PropagationNetwork
+from model.propagation.efficientnet.prop_net import PropagationNetwork
 from model.fusion_net import FusionNet
 from model.s2m.s2m_network import deeplabv3plus_mobilenet as S2M
 from util.palette import pal_color_map

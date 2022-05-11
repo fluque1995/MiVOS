@@ -7,8 +7,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
 
-from model.propagation import mod_efficientnet
-from model.propagation import cbam
+from model.propagation.resnet import mod_resnet
+from model.propagation.resnet import cbam
 
 
 class ResBlock(nn.Module):
@@ -58,29 +58,30 @@ class ValueEncoderSO(nn.Module):
     def __init__(self):
         super().__init__()
 
-        efficientnet = mod_efficientnet.efficientnet_b0(pretrained=True,
-                                                        extra_channels=1)
-        self.block1 = efficientnet.features[0]
-        self.block2 = efficientnet.features[1]
+        resnet = mod_resnet.resnet18(pretrained=True, extra_chan=1)
+        self.conv1 = resnet.conv1
+        self.bn1 = resnet.bn1
+        self.relu = resnet.relu  # 1/2, 64
+        self.maxpool = resnet.maxpool
 
-        self.block3 = efficientnet.features[2]  # 1/4, 24
-        self.block4 = efficientnet.features[3]  # 1/8, 40
-        self.block5 = efficientnet.features[4]
-        self.block6 = efficientnet.features[5]  # 1/16, 112
+        self.layer1 = resnet.layer1 # 1/4, 64
+        self.layer2 = resnet.layer2 # 1/8, 128
+        self.layer3 = resnet.layer3 # 1/16, 256
 
-        self.fuser = FeatureFusionBlock(120 + 112, 64)
+        self.fuser = FeatureFusionBlock(1024 + 256, 512)
 
     def forward(self, image, key_f16, mask):
         # key_f16 is the feature from the key encoder
 
         f = torch.cat([image, mask], 1)
 
-        x = self.block1(f)
-        x = self.block2(x)
-        x = self.block3(x)
-        x = self.block4(x)
-        x = self.block5(x)
-        x = self.block6(x)
+        x = self.conv1(f)
+        x = self.bn1(x)
+        x = self.relu(x)   # 1/2, 64
+        x = self.maxpool(x)  # 1/4, 64
+        x = self.layer1(x)   # 1/4, 64
+        x = self.layer2(x) # 1/8, 128
+        x = self.layer3(x) # 1/16, 256
 
         x = self.fuser(x, key_f16)
 
@@ -88,34 +89,34 @@ class ValueEncoderSO(nn.Module):
 
 
 # Multiple objects version, used in other times
-# Multiple objects version, used in other times
 class ValueEncoder(nn.Module):
     def __init__(self):
         super().__init__()
 
-        efficientnet = mod_efficientnet.efficientnet_b0(pretrained=True,
-                                                        extra_channels=2)
-        self.block1 = efficientnet.features[0]
-        self.block2 = efficientnet.features[1]
+        resnet = mod_resnet.resnet18(pretrained=True, extra_chan=2)
+        self.conv1 = resnet.conv1
+        self.bn1 = resnet.bn1
+        self.relu = resnet.relu  # 1/2, 64
+        self.maxpool = resnet.maxpool
 
-        self.block3 = efficientnet.features[2]  # 1/4, 24
-        self.block4 = efficientnet.features[3]  # 1/8, 40
-        self.block5 = efficientnet.features[4]
-        self.block6 = efficientnet.features[5]  # 1/16, 112
+        self.layer1 = resnet.layer1 # 1/4, 64
+        self.layer2 = resnet.layer2 # 1/8, 128
+        self.layer3 = resnet.layer3 # 1/16, 256
 
-        self.fuser = FeatureFusionBlock(120 + 112, 64)
+        self.fuser = FeatureFusionBlock(1024 + 256, 512)
 
     def forward(self, image, key_f16, mask, other_masks):
         # key_f16 is the feature from the key encoder
 
         f = torch.cat([image, mask, other_masks], 1)
 
-        x = self.block1(f)
-        x = self.block2(x)
-        x = self.block3(x)
-        x = self.block4(x)
-        x = self.block5(x)
-        x = self.block6(x)
+        x = self.conv1(f)
+        x = self.bn1(x)
+        x = self.relu(x)   # 1/2, 64
+        x = self.maxpool(x)  # 1/4, 64
+        x = self.layer1(x)   # 1/4, 64
+        x = self.layer2(x) # 1/8, 128
+        x = self.layer3(x) # 1/16, 256
 
         x = self.fuser(x, key_f16)
 
@@ -125,21 +126,24 @@ class ValueEncoder(nn.Module):
 class KeyEncoder(nn.Module):
     def __init__(self):
         super().__init__()
-        efficientnet = models.efficientnet_b2(pretrained=True)
-        self.block1 = efficientnet.features[0]
-        self.block2 = efficientnet.features[1]
+        resnet = models.resnet50(pretrained=True)
+        self.conv1 = resnet.conv1
+        self.bn1 = resnet.bn1
+        self.relu = resnet.relu  # 1/2, 64
+        self.maxpool = resnet.maxpool
 
-        self.block3 = efficientnet.features[2]  # 1/4, 24
-        self.block4 = efficientnet.features[3]  # 1/8, 48
-        self.block5 = efficientnet.features[4]
-        self.block6 = efficientnet.features[5]  # 1/16, 120
+        self.res2 = resnet.layer1 # 1/4, 256
+        self.layer2 = resnet.layer2 # 1/8, 512
+        self.layer3 = resnet.layer3 # 1/16, 1024
 
     def forward(self, f):
-        x = self.block1(f)
-        x = self.block2(x)
-        f4 = self.block3(x)   # 1/4, 24
-        f8 = self.block4(f4)  # 1/8, 48
-        f16 = self.block6(self.block5(f8))  # 1/16, 120
+        x = self.conv1(f)
+        x = self.bn1(x)
+        x = self.relu(x)   # 1/2, 64
+        x = self.maxpool(x)  # 1/4, 64
+        f4 = self.res2(x)   # 1/4, 256
+        f8 = self.layer2(f4) # 1/8, 512
+        f16 = self.layer3(f8) # 1/16, 1024
 
         return f16, f8, f4
 

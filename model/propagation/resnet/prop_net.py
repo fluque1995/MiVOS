@@ -7,17 +7,17 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from model.propagation.modules import *
+from model.propagation.resnet.modules import *
 
 
 class Decoder(nn.Module):
     def __init__(self):
         super().__init__()
-        self.compress = ResBlock(128, 64)
-        self.up_16_8 = UpsampleBlock(48, 64, 32) # 1/16 -> 1/8
-        self.up_8_4 = UpsampleBlock(24, 32, 32) # 1/8 -> 1/4
+        self.compress = ResBlock(1024, 512)
+        self.up_16_8 = UpsampleBlock(512, 512, 256) # 1/16 -> 1/8
+        self.up_8_4 = UpsampleBlock(256, 256, 256) # 1/8 -> 1/4
 
-        self.pred = nn.Conv2d(32, 1, kernel_size=(3,3), padding=(1,1), stride=1)
+        self.pred = nn.Conv2d(256, 1, kernel_size=(3,3), padding=(1,1), stride=1)
 
     def forward(self, f16, f8, f4):
         x = self.compress(f16)
@@ -70,7 +70,6 @@ def softmax_w_g_top(x, top=None, gauss=None):
         output = x_exp
 
     return output
-
 
 class EvalMemoryReader(nn.Module):
     def __init__(self, top_k, km):
@@ -138,15 +137,14 @@ class AttentionMemory(nn.Module):
 
         return affinity
 
-
-class PropagationNetwork(nn.Module):
+class ResnetPropagationNetwork(nn.Module):
     def __init__(self, top_k=20):
         super().__init__()
         self.value_encoder = ValueEncoder()
         self.key_encoder = KeyEncoder()
 
-        self.key_proj = KeyProjection(120, keydim=32)
-        self.key_comp = nn.Conv2d(120, 64, kernel_size=3, padding=1)
+        self.key_proj = KeyProjection(1024, keydim=64)
+        self.key_comp = nn.Conv2d(1024, 512, kernel_size=3, padding=1)
 
         self.memory = EvalMemoryReader(top_k, km=None)
         self.attn_memory = AttentionMemory(top_k)

@@ -7,22 +7,20 @@ See eval_semi_davis.py / eval_interactive_davis.py for examples
 import torch
 import numpy as np
 
-from model.propagation.prop_net import PropagationNetwork
-from model.fusion_net import FusionNet
 from model.aggregate import aggregate_wbg
 
 from util.tensor_util import pad_divide_by
 
 class InferenceCore:
     """
-    images - leave them in original dimension (unpadded), but do normalize them. 
+    images - leave them in original dimension (unpadded), but do normalize them.
             Should be CPU tensors of shape B*T*3*H*W
-            
-    mem_profile - How extravagant I can use the GPU memory. 
+
+    mem_profile - How extravagant I can use the GPU memory.
                 Usually more memory -> faster speed but I have not drawn the exact relation
                 0 - Use the most memory
-                1 - Intermediate, larger buffer 
-                2 - Intermediate, small buffer 
+                1 - Intermediate, larger buffer
+                2 - Intermediate, small buffer
                 3 - Use the minimal amount of GPU memory
                 Note that *none* of the above options will affect the accuracy
                 This is a space-time tradeoff, not a space-performance one
@@ -31,7 +29,7 @@ class InferenceCore:
                 Higher number -> less memory usage
                 Unlike the last option, this *is* a space-performance tradeoff
     """
-    def __init__(self, prop_net:PropagationNetwork, fuse_net:FusionNet, images, num_objects, 
+    def __init__(self, prop_net, fuse_net, images, num_objects,
                     mem_profile=0, mem_freq=5, device='cuda:0'):
         self.prop_net = prop_net.to(device, non_blocking=True)
         if fuse_net is not None:
@@ -176,7 +174,7 @@ class InferenceCore:
             # In-place fusion, maximizes the use of queried buffer
             # esp. for long sequence where the buffer will be flushed
             if (closest_ti != self.t) and (closest_ti != -1):
-                self.prob[:,ti] = self.fuse_one_frame(closest_ti, idx, ti, self.prob[:,ti], out_mask, 
+                self.prob[:,ti] = self.fuse_one_frame(closest_ti, idx, ti, self.prob[:,ti], out_mask,
                                         key_k, k16).to(self.result_dev)
             else:
                 self.prob[:,ti] = out_mask.to(self.result_dev)
@@ -198,9 +196,9 @@ class InferenceCore:
         dist = torch.FloatTensor([nc, nr]).to(self.device).unsqueeze(0)
         attn_map = self.prop_net.get_attention(mk16, self.pos_mask_diff, self.neg_mask_diff, qk16)
         for k in range(1, self.k+1):
-            w = torch.sigmoid(self.fuse_net(self.get_image_buffered(ti), 
+            w = torch.sigmoid(self.fuse_net(self.get_image_buffered(ti),
                     prev_mask[k:k+1].to(self.device), curr_mask[k:k+1].to(self.device), attn_map[k:k+1], dist))
-            prob[k-1] = w 
+            prob[k-1] = w
         return aggregate_wbg(prob, keep_bg=True)
 
     def interact(self, mask, idx, total_cb=None, step_cb=None):
@@ -243,7 +241,7 @@ class InferenceCore:
 
         self.do_pass(key_k, key_v, idx, True, step_cb=step_cb)
         self.do_pass(key_k, key_v, idx, False, step_cb=step_cb)
-        
+
         # This is a more memory-efficient argmax
         for ti in range(self.t):
             self.masks[ti] = torch.argmax(self.prob[:,ti], dim=0)

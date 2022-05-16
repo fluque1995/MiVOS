@@ -137,14 +137,14 @@ for patient in sorted(os.listdir(masks_dir)):
                 except:
                     f2_60 = []
 
-                f1_v_60 = f1_60["v_freq"] if len(f1_60) > 0 else "-"
-                m1_v_60 = f1_60["v_mag"] if len(f1_60) > 0 else "-"
-                f1_h_60 = f1_60["h_freq"] if len(f1_60) > 0 else "-"
-                m1_h_60 = f1_60["h_mag"] if len(f1_60) > 0 else "-"
-                f2_v_60 = f2_60["v_freq"] if len(f2_60) > 0 else "-"
-                m2_v_60 = f2_60["v_mag"] if len(f2_60) > 0 else "-"
-                f2_h_60 = f2_60["h_freq"] if len(f2_60) > 0 else "-"
-                m2_h_60 = f2_60["h_mag"] if len(f2_60) > 0 else "-"
+                f1_v_60 = np.mean(f1_60["v_freq"]) if len(f1_60) > 0 else "-"
+                m1_v_60 = np.mean(f1_60["v_mag"]) if len(f1_60) > 0 else "-"
+                f1_h_60 = np.mean(f1_60["h_freq"]) if len(f1_60) > 0 else "-"
+                m1_h_60 = np.mean(f1_60["h_mag"]) if len(f1_60) > 0 else "-"
+                f2_v_60 = np.mean(f2_60["v_freq"]) if len(f2_60) > 0 else "-"
+                m2_v_60 = np.mean(f2_60["v_mag"]) if len(f2_60) > 0 else "-"
+                f2_h_60 = np.mean(f2_60["h_freq"]) if len(f2_60) > 0 else "-"
+                m2_h_60 = np.mean(f2_60["h_mag"]) if len(f2_60) > 0 else "-"
 
                 print("Plotting movements...")
                 if experiment[:3] == "D-N":
@@ -175,11 +175,11 @@ for patient in sorted(os.listdir(masks_dir)):
 
                 print("Computing movement index with temporal_window=60...")
                 mov_indices_60 = movement_index(masks, temporal_window=60)
-                mv1_60 = mov_indices_60[list(mov_indices_60)[0]]
+                mv1_60 = np.mean(mov_indices_60[list(mov_indices_60)[0]])
                 mv2_60 = "-"
 
                 if len(mov_indices_60) > 1:
-                    mv2_60 = mov_indices_60[list(mov_indices_60)[1]]
+                    mv2_60 = np.mean(mov_indices_60[list(mov_indices_60)[1]])
 
                 print("Plotting finger heatmaps...")
                 plot_finger_heatmaps(

@@ -45,6 +45,7 @@ def plot_movements(center_positions, y_limit=20, x_limit=20,
             fig.show()
         if saving_path is not None:
             fig.savefig(saving_path, bbox_inches='tight')
+            plt.close(fig)
 
 
 def plot_overlapped_movements(centers, y_limit=20, x_limit=20,
@@ -85,6 +86,7 @@ def plot_overlapped_movements(centers, y_limit=20, x_limit=20,
 
     if saving_path is not None:
         fig.savefig(saving_path, bbox_inches='tight')
+        plt.close(fig)
 
 
 def plot_finger_heatmaps(masks_list, frames_list, subplots=(1, 1),
@@ -128,3 +130,4 @@ def plot_finger_heatmaps(masks_list, frames_list, subplots=(1, 1),
 
     if saving_path is not None:
         fig.savefig(saving_path, bbox_inches='tight')
+        plt.close(fig)

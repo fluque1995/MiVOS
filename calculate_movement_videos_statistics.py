@@ -120,5 +120,6 @@ for patient, visit, experiment in combined_paths:
         ax[3].set_title("Left finger, horizontal movement", fontsize="small")
 
     fig.savefig(os.path.join(graphs_folder, "stds.png"), bbox_inches="tight")
+    writer.writerow(curr_row)
 
-writer.close()
+stats_csv.close()

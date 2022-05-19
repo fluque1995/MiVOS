@@ -11,6 +11,8 @@ from visualization.plotting import plot_movements
 masks_folder = "../Mascaras"
 output_folder = "../Resultados"
 
+os.makedirs(output_folder, exist_ok=True)
+
 combined_paths = product(
     [f"P{i+1}" for i in range(6)],  # PATIENT
     ["Visita_1_OFF", "Visita_2_ON", "Visita_3_ON"],  # VISIT

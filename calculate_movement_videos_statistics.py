@@ -1,14 +1,29 @@
+import csv
 import io_utils
+import logging
 import matplotlib.pyplot as plt
 import os
-import logging
 
 from itertools import product
 from masks_manipulation import extract_centers, savgol_smoothing
 from visualization.plotting import plot_movements
 
-masks_folder = '../Mascaras'
-output_folder = '../Resultados'
+masks_folder = '../Mascaras_efficientnet'
+output_folder = '../Resultados_efficientnet'
+output_file = os.path.join(output_folder, "statistics_movement.csv")
+
+f = open(output_file, "w")
+writer = csv.writer(f)
+
+writer.writerow([
+    "Paciente",
+    "Visita",
+    "Experimento",
+    "STD_v_dedo_1",
+    "STD_h_dedo_1",
+    "STD_v_dedo_2",
+    "STD_h_dedo_2"
+])
 
 combined_paths = product(
     [f"P{i+1}" for i in range(6)],  # PATIENT
@@ -39,6 +54,7 @@ for patient, visit, experiment in combined_paths:
 
     differences = centers - smoothed_centers
 
+    csv_row = [patient, visit, experiment]
     with plt.style.context(('ggplot')):
         fig, ax = plt.subplots(nrows=2, ncols=2, sharey=True)
         fig.suptitle(f"{patient} - {visit} - {experiment}")
@@ -46,27 +62,32 @@ for patient, visit, experiment in combined_paths:
 
         ax = ax.ravel()
         curr_data = differences[0, :, 0]
+        csv_row.append(curr_data.std())
         ax[0].hist(curr_data, bins=50, range=[-10, 10],
                    label=f"STD: {curr_data.std():.3f}", edgecolor='black')
         ax[0].legend(prop={'size': 6})
         ax[0].set_title("Right finger, vertical movement", fontsize='small')
 
         curr_data = differences[0, :, 1]
+        csv_row.append(curr_data.std())
         ax[1].hist(curr_data, bins=50, range=[-10, 10],
                    label=f"STD: {curr_data.std():.3f}", edgecolor='black')
         ax[1].legend(prop={'size': 6})
         ax[1].set_title("Right finger, horizontal movement", fontsize='small')
 
         curr_data = differences[1, :, 0]
+        csv_row.append(curr_data.std())
         ax[2].hist(curr_data, bins=50, range=[-10, 10], color='#348ABD',
                    label=f"STD: {curr_data.std():.3f}", edgecolor='black')
         ax[2].legend(prop={'size': 6})
         ax[2].set_title("Left finger, vertical movement", fontsize='small')
 
         curr_data = differences[1, :, 1]
+        csv_row.append(curr_data.std())
         ax[3].hist(curr_data, bins=50, range=[-10, 10], color='#348ABD',
                    label=f"STD: {curr_data.std():.3f}", edgecolor='black')
         ax[3].legend(prop={'size': 6})
         ax[3].set_title("Left finger, horizontal movement", fontsize='small')
 
     fig.savefig(os.path.join(graphs_folder, "stds.png"), bbox_inches='tight')
+    writer.writerow(csv_row)

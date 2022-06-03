@@ -47,8 +47,9 @@ torch.set_grad_enabled(False)
 palette = pal_color_map()
 
 class App(QWidget):
-    def __init__(self, prop_net, fuse_net, s2m_ctrl:S2MController, fbrs_ctrl:FBRSController,
-                    images, masks, num_objects, mem_freq, mem_profile, vid_path):
+    def __init__(self, prop_net, fuse_net, s2m_ctrl:S2MController,
+                 fbrs_ctrl:FBRSController, images, masks, num_objects,
+                 mem_freq, mem_profile, vid_path, args):
         super().__init__()
 
         self.images = images
@@ -61,6 +62,7 @@ class App(QWidget):
                          num_objects, mem_freq=mem_freq, mem_profile=mem_profile)
 
         self.num_frames, self.height, self.width = self.images.shape[:3]
+        self.args = args
 
         # IOU computation
         if self.masks is not None:
@@ -326,7 +328,8 @@ class App(QWidget):
         self.show_current_frame()
 
     def save(self):
-        folder_path = os.path.join("../Mascaras", self.vid_path)
+        folder_path = os.path.join(f"../Mascaras_{self.args.prop_model}",
+                                   self.vid_path)
         os.makedirs(folder_path, exist_ok=True)
 
         self.console_push_text(f'Saving masks and overlays in folder {folder_path}...')
@@ -1056,5 +1059,6 @@ if __name__ == '__main__':
 
         app = QApplication(sys.argv)
         ex = App(prop_model, fusion_model, s2m_controller, fbrs_controller,
-                    images, masks, num_objects, args.mem_freq, args.mem_profile, vid_path)
+                 images, masks, num_objects, args.mem_freq, args.mem_profile,
+                 vid_path, args)
         sys.exit(app.exec_())

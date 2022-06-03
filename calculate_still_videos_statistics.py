@@ -12,8 +12,8 @@ from masks_manipulation import (
 )
 from visualization.plotting import plot_movements, plot_finger_heatmaps
 
-masks_dir = "../Mascaras/"
-output_dir = "../Resultados/"
+masks_dir = "../Mascaras_efficientnet/"
+output_dir = "../Resultados_efficientnet/"
 
 graph_file_extensions = ".pdf"
 

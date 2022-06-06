@@ -328,7 +328,7 @@ class App(QWidget):
         self.show_current_frame()
 
     def save(self):
-        folder_path = os.path.join(f"../Mascaras_{self.args.prop_model}",
+        folder_path = os.path.join(f"../Mascaras_{self.args.prop_arch}",
                                    self.vid_path)
         os.makedirs(folder_path, exist_ok=True)
 

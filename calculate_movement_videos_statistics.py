@@ -11,20 +11,6 @@ from visualization.plotting import plot_movements
 
 masks_folder = '../Mascaras_efficientnet'
 output_folder = '../Resultados_efficientnet'
-output_file = os.path.join(output_folder, "statistics_movement.csv")
-
-f = open(output_file, "w")
-writer = csv.writer(f)
-
-writer.writerow([
-    "Paciente",
-    "Visita",
-    "Experimento",
-    "STD_v_dedo_1",
-    "STD_h_dedo_1",
-    "STD_v_dedo_2",
-    "STD_h_dedo_2"
-])
 
 combined_paths = product(
     [f"P{i+1}" for i in range(6)],  # PATIENT
@@ -32,17 +18,17 @@ combined_paths = product(
     ["D-N_izq", "D-N_der"],  # VIDEO NAME
 )
 
-stats_csv = open(os.path.join(output_folder, "movement_stats.csv"), "w", newline="")
+stats_csv = open(os.path.join(output_folder, "statistics_movement.csv"), "w", newline="")
 
 writer = csv.writer(stats_csv)
 dataset_header = [
     "Paciente",
     "Visita",
     "Experimento",
-    "std_v_dedo_1",
-    "std_h_dedo_1",
-    "std_v_dedo_2",
-    "std_h_dedo_2",
+    "STD_v_dedo_1",
+    "STD_h_dedo_1",
+    "STD_v_dedo_2",
+    "STD_h_dedo_2",
 ]
 writer.writerow(dataset_header)
 
